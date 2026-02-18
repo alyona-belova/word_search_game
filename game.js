@@ -4,16 +4,16 @@ const themes = [
     words: ["АМУЛЕТ", "ПОСОХ", "ГРИМУАР", "КРИСТАЛЛ", "СВИТОК", "ТАЛИСМАН", "ПЕРСТЕНЬ"],
   },
   {
-    name: "Мифические существа",
-    words: ["ФЕНИКС", "ВАСИЛИСК", "СФИНКС", "ГОБЛИН", "ЕДИНОРОГ", "СИРЕНА", "ГРИФОН"],
-  },
-  {
     name: "Магические ритуалы",
     words: ["ЗАКЛИНАНИЕ", "ОБРЯД", "ПРИВОРОТ", "ЛЕВИТАЦИЯ", "ПРИЗЫВ", "МЕДИТАЦИЯ", "ПОСВЯЩЕНИЕ"],
   },
   {
     name: "Ингредиенты для зелья",
     words: ["МАНДРАГОРА", "ЛАВАНДА", "ПОЛЫНЬ", "СЕРА", "РТУТЬ", "ЗОЛА", "РОСА"],
+  },
+  {
+    name: "Мифические существа",
+    words: ["ФЕНИКС", "ВАСИЛИСК", "СФИНКС", "ГОБЛИН", "ЕДИНОРОГ", "СИРЕНА", "ГРИФОН"],
   },
 ];
 
@@ -34,6 +34,10 @@ class WordSearchGame {
   init() {
     this.loadLevel(this.currentLevelIndex);
     this.setupEventListeners();
+  }
+
+  updateGridSizeVariable() {
+    document.documentElement.style.setProperty('--grid-size', this.gridSize);
   }
 
   setupEventListeners() {
@@ -70,6 +74,7 @@ class WordSearchGame {
 
     this.updateThemeDisplay(theme);
     this.generateGrid();
+    this.updateGridSizeVariable();
     this.render();
 
     document.getElementById("levelCompleteMessage").style.display = "none";

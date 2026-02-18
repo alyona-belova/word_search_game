@@ -2,6 +2,7 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  --grid-size: 12;
   --purple-color: #724cf9;
   --bg-color: #564592;
   --pink-main-color: #ca7df9;
@@ -248,9 +249,9 @@ body {
   background: var(--pink-main-color);
   color: white;
   border: none;
-  padding: 15px 40px;
-  border-radius: 40px;
-  font-size: 1.2em;
+  padding: 15px 30px;
+  border-radius: 30px;
+  font-size: 1.1em;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -273,10 +274,11 @@ body {
   .container {
     max-width: 100%;
     border-radius: 20px;
+    margin: 0;
   }
 
   .header {
-    padding: 20px;
+    padding: 20px 15px;
   }
 
   .header h1 {
@@ -290,30 +292,39 @@ body {
 
   .theme-info {
     padding: 15px;
+    flex-direction: column;
+    gap: 10px;
   }
 
   .game-area {
-    padding: 15px;
+    padding: 15px 10px;
+    width: 100%;
+    overflow-x: hidden;
   }
 
   .word-search-grid {
     gap: 3px;
-    padding: 15px;
+    padding: 15px 10px;
     margin-bottom: 20px;
     width: 100%;
     justify-content: center;
+    display: inline-grid;
+    box-sizing: border-box;
   }
 
   .grid-cell {
-    width: min(32px, 8vw);
-    height: min(32px, 8vw);
-    font-size: min(16px, 4vw);
+    width: min(32px, calc(90vw / var(--grid-size) - 5px));
+    height: min(32px, calc(90vw / var(--grid-size) - 5px));
+    font-size: min(16px, calc(90vw / var(--grid-size) / 2));
     border-radius: 6px;
     border-width: 1.5px;
+    box-sizing: border-box;
   }
 
   .words-progress {
     padding: 15px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .progress-header h3 {
@@ -340,8 +351,8 @@ body {
 
 @media (max-width: 380px) {
   .grid-cell {
-    width: min(28px, 7vw);
-    height: min(28px, 7vw);
-    font-size: min(14px, 3.5vw);
+    width: min(28px, calc(85vw / var(--grid-size) - 3px));
+    height: min(28px, calc(85vw / var(--grid-size) - 3px));
+    font-size: min(14px, calc(85vw / var(--grid-size) / 2.2));
   }
 }
