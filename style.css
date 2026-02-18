@@ -109,9 +109,12 @@ body {
   color: var(--dark-grey-color);
   cursor: pointer;
   user-select: none;
-  -webkit-user-select: none;
-  -ms-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
   transition: all 0.2s ease;
 }
 
@@ -201,6 +204,7 @@ body {
     transform: scale(0.8);
     opacity: 0;
   }
+
   100% {
     transform: scale(1);
     opacity: 1;
@@ -223,6 +227,7 @@ body {
     transform: translateY(-10px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -265,23 +270,78 @@ body {
 }
 
 @media (max-width: 600px) {
-  .grid-cell {
-    width: 30px;
-    height: 30px;
-    font-size: 16px;
-    border-radius: 8px;
+  .container {
+    max-width: 100%;
+    border-radius: 20px;
+  }
+
+  .header {
+    padding: 20px;
   }
 
   .header h1 {
-    font-size: 2em;
+    font-size: 1.8em;
+  }
+
+  .header p {
+    font-size: 0.9em;
+    line-height: 1.4;
   }
 
   .theme-info {
-    flex-direction: column;
-    gap: 15px;
+    padding: 15px;
   }
 
-  .theme-badge {
+  .game-area {
+    padding: 15px;
+  }
+
+  .word-search-grid {
+    gap: 3px;
+    padding: 15px;
+    margin-bottom: 20px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .grid-cell {
+    width: min(32px, 8vw);
+    height: min(32px, 8vw);
+    font-size: min(16px, 4vw);
+    border-radius: 6px;
+    border-width: 1.5px;
+  }
+
+  .words-progress {
+    padding: 15px;
+  }
+
+  .progress-header h3 {
     font-size: 1em;
+  }
+
+  .found-word-badge {
+    padding: 4px 12px;
+    font-size: 0.9em;
+  }
+
+  .next-level-btn {
+    padding: 12px 30px;
+    font-size: 1em;
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .footer {
+    padding: 15px;
+    font-size: 0.8em;
+  }
+}
+
+@media (max-width: 380px) {
+  .grid-cell {
+    width: min(28px, 7vw);
+    height: min(28px, 7vw);
+    font-size: min(14px, 3.5vw);
   }
 }

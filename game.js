@@ -1,27 +1,19 @@
 const themes = [
   {
-    name: "Заклинания стихий",
-    words: ["ОГОНЬ", "ВОДА", "ЗЕМЛЯ", "ВОЗДУХ", "ТАЙФУН", "ЛАВА", "МОЛНИЯ"],
-  },
-  {
     name: "Артефакты",
-    words: ["АМУЛЕТ", "ЖЕЗЛ", "КНИГА", "КРИСТАЛЛ", "СФЕРА", "ТАЛИСМАН", "РУНА"],
+    words: ["АМУЛЕТ", "ПОСОХ", "ГРИМУАР", "КРИСТАЛЛ", "СВИТОК", "ТАЛИСМАН", "ПЕРСТЕНЬ"],
   },
   {
     name: "Мифические существа",
-    words: ["ФЕНИКС", "ДРАКОН", "ЭЛЬФ", "ГОБЛИН", "ТРОЛЛЬ", "СИРЕНА", "ГРИФОН"],
+    words: ["ФЕНИКС", "ВАСИЛИСК", "СФИНКС", "ГОБЛИН", "ЕДИНОРОГ", "СИРЕНА", "ГРИФОН"],
   },
   {
     name: "Магические ритуалы",
-    words: [
-      "ЗАКЛИНАНИЕ",
-      "ОБРЯД",
-      "ПРИВОРОТ",
-      "САМОЗАЩИТА",
-      "ПРИЗЫВ",
-      "МЕДИТАЦИЯ",
-      "ПОСВЯЩЕНИЕ",
-    ],
+    words: ["ЗАКЛИНАНИЕ", "ОБРЯД", "ПРИВОРОТ", "ЛЕВИТАЦИЯ", "ПРИЗЫВ", "МЕДИТАЦИЯ", "ПОСВЯЩЕНИЕ"],
+  },
+  {
+    name: "Ингредиенты для зелья",
+    words: ["МАНДРАГОРА", "ЛАВАНДА", "ПОЛЫНЬ", "СЕРА", "РТУТЬ", "ЗОЛА", "РОСА"],
   },
 ];
 
@@ -49,6 +41,16 @@ class WordSearchGame {
     document
       .getElementById("nextLevelBtn")
       .addEventListener("click", () => this.nextLevel());
+
+    document.getElementById('grid').addEventListener('touchmove', (e) => {
+      e.preventDefault();
+    }, { passive: false });
+
+    document.addEventListener('touchstart', (e) => {
+      if (e.target.classList.contains('grid-cell')) {
+        e.preventDefault();
+      }
+    }, { passive: false });
   }
 
   loadLevel(index) {
@@ -75,9 +77,8 @@ class WordSearchGame {
 
   updateThemeDisplay(theme) {
     document.getElementById("currentTheme").textContent = theme.name;
-    document.getElementById("levelProgress").textContent = `Уровень ${
-      this.currentLevelIndex + 1
-    }/${themes.length}`;
+    document.getElementById("levelProgress").textContent = `Уровень ${this.currentLevelIndex + 1
+      }/${themes.length}`;
   }
 
   generateGrid() {
@@ -186,7 +187,7 @@ class WordSearchGame {
       "Ь",
       "Э",
       "Ю",
-      "Я",
+      "Я"
     ];
 
     for (let i = 0; i < this.gridSize; i++) {
@@ -194,7 +195,7 @@ class WordSearchGame {
         if (this.grid[i][j] === null) {
           this.grid[i][j] =
             RUSSIAN_ALPHABET[
-              Math.floor(Math.random() * RUSSIAN_ALPHABET.length)
+            Math.floor(Math.random() * RUSSIAN_ALPHABET.length)
             ];
         }
       }
@@ -324,7 +325,7 @@ class WordSearchGame {
 
   showGameComplete() {
     this.showMessage(
-      "Поздравляем! Все слова восстановлены, заклинания снова активны, а древние ритуалы завершены. Великий Архив вновь сияет магическим знанием, и теперь вы – полноценный хранитель тайн Академии.",
+      "Поздравляем! Все слова восстановлены, а заклинания снова активны. Великий Архив вновь сияет магическим знанием, и теперь вы можете считать себя полноценным хранителем тайн Академии.",
       "level-complete",
     );
     document.getElementById("nextLevelBtn").style.display = "none";
@@ -341,6 +342,31 @@ class WordSearchGame {
         messageEl.style.display = "none";
       }
     }, 2000);
+  }
+
+  handleTouchStart(event) {
+    event.preventDefault();
+    const cell = event.target;
+    const row = parseInt(cell.dataset.row);
+    const col = parseInt(cell.dataset.col);
+    this.startSelection(row, col);
+  }
+
+  handleTouchMove(event) {
+    event.preventDefault();
+    const touch = event.touches[0];
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+
+    if (element && element.classList.contains('grid-cell')) {
+      const row = parseInt(element.dataset.row);
+      const col = parseInt(element.dataset.col);
+      this.addToSelection(row, col);
+    }
+  }
+
+  handleTouchEnd(event) {
+    event.preventDefault();
+    this.stopSelection();
   }
 
   render() {
@@ -365,10 +391,16 @@ class WordSearchGame {
         if (isSelected) cellClass += " selected";
 
         html += `<div class="${cellClass}"
+        data-row="${i}" data-col="${j}"
+        ontouchstart="game.handleTouchStart(event)"
+        ontouchmove="game.handleTouchMove(event)"
+        ontouchend="game.handleTouchEnd(event)"
+        ontouchcancel="game.handleTouchEnd(event)"
         onmousedown="game.startSelection(${i}, ${j})"
         onmouseover="game.addToSelection(${i}, ${j})"
+        onmouseup="game.stopSelection()"
         ondblclick="game.selectedCells.clear(); game.render();"
-        >${this.grid[i][j]}</div>`;
+      >${this.grid[i][j]}</div>`;
       }
     }
 
