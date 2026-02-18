@@ -218,7 +218,7 @@ body {
   border-radius: 15px;
   display: none;
   font-size: 1.2em;
-  color: var(--pink-main-color);
+  color: var(--purple-color);
   animation: slideIn 0.3s ease;
 }
 
