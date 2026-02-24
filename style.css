@@ -2,11 +2,10 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  --grid-size: 12;
-  --purple-color: #724cf9;
-  --bg-color: #564592;
-  --pink-main-color: #ca7df9;
-  --pink-secondary-color: #f896d8;
+  --blue-color: #C2E2FA;
+  --bg-color: #FFF1CB;
+  --main-color: #FF8F8F;
+  --secondary-color: #B7A3E3;
   --grey-color: #e9e9e9;
   --light-grey-color: #f8f8f8;
   --dark-grey-color: #757575;
@@ -32,7 +31,7 @@ body {
 }
 
 .header {
-  background: var(--pink-secondary-color);
+  background: var(--secondary-color);
   color: white;
   padding: 30px;
   text-align: center;
@@ -61,7 +60,7 @@ body {
 }
 
 .theme-badge {
-  background: var(--pink-main-color);
+  background: var(--main-color);
   color: white;
   padding: 8px 25px;
   border-radius: 30px;
@@ -72,7 +71,7 @@ body {
 
 .level-progress {
   font-size: 1em;
-  color: var(--pink-main-color);
+  color: var(--main-color);
   font-weight: 500;
   background: var(--light-grey-color);
   padding: 8px 20px;
@@ -110,29 +109,26 @@ body {
   color: var(--dark-grey-color);
   cursor: pointer;
   user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  -webkit-touch-callout: none;
   -webkit-user-select: none;
-  -khtml-user-select: none;
-  -moz-user-select: none;
   -ms-user-select: none;
+  -webkit-touch-callout: none;
   transition: all 0.2s ease;
 }
 
 .grid-cell.selected {
-  background: var(--pink-secondary-color);
+  background: var(--secondary-color);
   color: white;
   transform: scale(1.05);
 }
 
 .grid-cell.found {
-  background: var(--pink-main-color);
+  background: var(--main-color);
   color: white;
   cursor: default;
 }
 
 .grid-cell:hover:not(.found) {
-  background: var(--pink-secondary-color);
+  background: var(--secondary-color);
   color: white;
   transform: scale(1.05);
 }
@@ -164,7 +160,7 @@ body {
   padding: 5px 15px;
   border-radius: 25px;
   font-weight: 500;
-  color: var(--pink-secondary-color);
+  color: var(--secondary-color);
 }
 
 .progress-bar {
@@ -177,7 +173,7 @@ body {
 
 .progress-fill {
   height: 100%;
-  background: var(--purple-color);
+  background: var(--blue-color);
   border-radius: 10px;
   transition: width 0.3s ease;
 }
@@ -192,7 +188,7 @@ body {
 
 .found-word-badge {
   padding: 5px 20px;
-  background: var(--pink-main-color);
+  background: var(--main-color);
   border-radius: 30px;
   font-size: 1em;
   font-weight: 500;
@@ -205,7 +201,6 @@ body {
     transform: scale(0.8);
     opacity: 0;
   }
-
   100% {
     transform: scale(1);
     opacity: 1;
@@ -218,8 +213,8 @@ body {
   margin: 20px 0;
   border-radius: 15px;
   display: none;
-  font-size: 1.2em;
-  color: var(--purple-color);
+  font-size: 1.1em;
+  color: black;
   animation: slideIn 0.3s ease;
 }
 
@@ -228,7 +223,6 @@ body {
     transform: translateY(-10px);
     opacity: 0;
   }
-
   to {
     transform: translateY(0);
     opacity: 1;
@@ -236,7 +230,7 @@ body {
 }
 
 .message.success {
-  background: var(--pink-secondary-color);
+  background: var(--secondary-color);
   color: white;
   display: block;
 }
@@ -246,12 +240,12 @@ body {
 }
 
 .next-level-btn {
-  background: var(--pink-main-color);
+  background: var(--main-color);
   color: white;
   border: none;
-  padding: 15px 30px;
-  border-radius: 30px;
-  font-size: 1.1em;
+  padding: 15px 40px;
+  border-radius: 40px;
+  font-size: 1.2em;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -271,88 +265,23 @@ body {
 }
 
 @media (max-width: 600px) {
-  .container {
-    max-width: 100%;
-    border-radius: 20px;
-    margin: 0;
-  }
-
-  .header {
-    padding: 20px 15px;
+  .grid-cell {
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+    border-radius: 8px;
   }
 
   .header h1 {
-    font-size: 1.8em;
-  }
-
-  .header p {
-    font-size: 0.9em;
-    line-height: 1.4;
+    font-size: 2em;
   }
 
   .theme-info {
-    padding: 15px;
     flex-direction: column;
-    gap: 10px;
+    gap: 15px;
   }
 
-  .game-area {
-    padding: 15px 10px;
-    width: 100%;
-    overflow-x: hidden;
-  }
-
-  .word-search-grid {
-    gap: 3px;
-    padding: 15px 10px;
-    margin-bottom: 20px;
-    width: 100%;
-    justify-content: center;
-    display: inline-grid;
-    box-sizing: border-box;
-  }
-
-  .grid-cell {
-    width: min(32px, calc(90vw / var(--grid-size) - 5px));
-    height: min(32px, calc(90vw / var(--grid-size) - 5px));
-    font-size: min(16px, calc(90vw / var(--grid-size) / 2));
-    border-radius: 6px;
-    border-width: 1.5px;
-    box-sizing: border-box;
-  }
-
-  .words-progress {
-    padding: 15px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .progress-header h3 {
+  .theme-badge {
     font-size: 1em;
-  }
-
-  .found-word-badge {
-    padding: 4px 12px;
-    font-size: 0.9em;
-  }
-
-  .next-level-btn {
-    padding: 12px 30px;
-    font-size: 1em;
-    width: 100%;
-    max-width: 300px;
-  }
-
-  .footer {
-    padding: 15px;
-    font-size: 0.8em;
-  }
-}
-
-@media (max-width: 380px) {
-  .grid-cell {
-    width: min(28px, calc(85vw / var(--grid-size) - 3px));
-    height: min(28px, calc(85vw / var(--grid-size) - 3px));
-    font-size: min(14px, calc(85vw / var(--grid-size) / 2.2));
   }
 }

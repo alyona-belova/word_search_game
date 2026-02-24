@@ -1,19 +1,55 @@
 const themes = [
   {
-    name: "Артефакты",
-    words: ["АМУЛЕТ", "ПОСОХ", "ГРИМУАР", "КРИСТАЛЛ", "СВИТОК", "ТАЛИСМАН", "ПЕРСТЕНЬ"],
+    name: "Кинопроизводство",
+    words: [
+      "0KHQptCV0J3QkNCg0JjQmQ==",
+      "0JrQkNCh0KLQmNCd0JM=",
+      "0J/QoNCe0JTQrtCh0JXQoA==",
+      "0JTQldCa0J7QoNCQ0KbQmNCv",
+      "0JzQntCd0KLQkNCW",
+      "0JTQo9CR0JvQrA==",
+      "0KHQqtCB0JzQmtCQ",
+      "0KDQldCW0JjQodCh0JXQoA==",
+    ],
   },
   {
-    name: "Магические ритуалы",
-    words: ["ЗАКЛИНАНИЕ", "ОБРЯД", "ПРИВОРОТ", "ЛЕВИТАЦИЯ", "ПРИЗЫВ", "МЕДИТАЦИЯ", "ПОСВЯЩЕНИЕ"],
+    name: "Космос",
+    words: [
+      "0J7QoNCR0JjQotCQ",
+      "0KHQotCr0JrQntCS0JrQkA==",
+      "0JrQkNCf0KHQo9Cb0JA=",
+      "0K3QmtCY0J/QkNCW",
+      "0JzQntCU0KPQm9Cs",
+      "0KHQn9Cj0KLQndCY0Jo=",
+      "0KDQkNCa0JXQotCQ",
+      "0KLQoNCQ0JXQmtCi0J7QoNCY0K8=",
+    ],
   },
   {
-    name: "Ингредиенты для зелья",
-    words: ["МАНДРАГОРА", "ЛАВАНДА", "ПОЛЫНЬ", "СЕРА", "РТУТЬ", "ЗОЛА", "РОСА"],
+    name: "Городская среда",
+    words: [
+      "0JHQo9Cb0KzQktCQ0KA=",
+      "0KTQntCd0JDQoNCs",
+      "0KLQoNCe0KLQo9CQ0KA=",
+      "0KHQmtCS0JXQoA==",
+      "0JLQmNCi0KDQmNCd0JA=",
+      "0J/QldCg0JXQpdCe0JQ=",
+      "0J7QodCi0JDQndCe0JLQmtCQ",
+      "0JDQoNCa0JA=",
+    ],
   },
   {
-    name: "Мифические существа",
-    words: ["ФЕНИКС", "ВАСИЛИСК", "СФИНКС", "ГОБЛИН", "ЕДИНОРОГ", "СИРЕНА", "ГРИФОН"],
+    name: "Машинное обучение",
+    words: [
+      "0JTQkNCi0JDQodCV0KI=",
+      "0J/QoNCY0JfQndCQ0Jo=",
+      "0JzQldCi0KDQmNCa0JA=",
+      "0JzQntCU0JXQm9Cs",
+      "0JPQoNCQ0JTQmNCV0J3Qog==",
+      "0JrQm9CQ0KHQotCV0KA=",
+      "0KDQldCT0KDQldCh0KHQmNCv",
+      "0J/QoNCV0JTQodCa0JDQl9CQ0J3QmNCV",
+    ],
   },
 ];
 
@@ -27,6 +63,7 @@ class WordSearchGame {
     this.isSelecting = false;
     this.gridSize = 12;
     this.placements = new Map();
+    this.demoWordShown = false;
 
     this.init();
   }
@@ -36,25 +73,15 @@ class WordSearchGame {
     this.setupEventListeners();
   }
 
-  updateGridSizeVariable() {
-    document.documentElement.style.setProperty('--grid-size', this.gridSize);
-  }
-
   setupEventListeners() {
     document.addEventListener("mouseup", () => this.stopSelection());
     document
       .getElementById("nextLevelBtn")
       .addEventListener("click", () => this.nextLevel());
+  }
 
-    document.getElementById('grid').addEventListener('touchmove', (e) => {
-      e.preventDefault();
-    }, { passive: false });
-
-    document.addEventListener('touchstart', (e) => {
-      if (e.target.classList.contains('grid-cell')) {
-        e.preventDefault();
-      }
-    }, { passive: false });
+  decodeWord(encoded) {
+    return decodeURIComponent(escape(atob(encoded)));
   }
 
   loadLevel(index) {
@@ -65,8 +92,8 @@ class WordSearchGame {
 
     const theme = themes[index];
     this.words = [...theme.words]
-      .map((w) => w.toUpperCase())
-      .sort((a, b) => b.length - a.length); // longest first
+      .map((w) => this.decodeWord(w).toUpperCase())
+      .sort((a, b) => b.length - a.length);
 
     this.foundWords.clear();
     this.selectedCells.clear();
@@ -74,16 +101,35 @@ class WordSearchGame {
 
     this.updateThemeDisplay(theme);
     this.generateGrid();
-    this.updateGridSizeVariable();
     this.render();
+
+    if (index === 0 && !this.demoWordShown) {
+      this.autoFindDemoWord();
+      this.demoWordShown = true;
+    }
 
     document.getElementById("levelCompleteMessage").style.display = "none";
   }
 
+  autoFindDemoWord() {
+    if (this.words.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * this.words.length);
+    const demoWord = this.words[randomIndex];
+    this.foundWords.add(demoWord);
+
+    this.showMessage(
+      `Слово "${demoWord}" уже найдено — попробуйте найти остальные!`,
+      "level-complete",
+    );
+
+    this.render();
+  }
+
   updateThemeDisplay(theme) {
     document.getElementById("currentTheme").textContent = theme.name;
-    document.getElementById("levelProgress").textContent = `Уровень ${this.currentLevelIndex + 1
-      }/${themes.length}`;
+    document.getElementById("levelProgress").textContent = `Уровень ${
+      this.currentLevelIndex + 1
+    }/${themes.length}`;
   }
 
   generateGrid() {
@@ -192,7 +238,7 @@ class WordSearchGame {
       "Ь",
       "Э",
       "Ю",
-      "Я"
+      "Я",
     ];
 
     for (let i = 0; i < this.gridSize; i++) {
@@ -200,7 +246,7 @@ class WordSearchGame {
         if (this.grid[i][j] === null) {
           this.grid[i][j] =
             RUSSIAN_ALPHABET[
-            Math.floor(Math.random() * RUSSIAN_ALPHABET.length)
+              Math.floor(Math.random() * RUSSIAN_ALPHABET.length)
             ];
         }
       }
@@ -329,10 +375,7 @@ class WordSearchGame {
   }
 
   showGameComplete() {
-    this.showMessage(
-      "Поздравляем! Все слова восстановлены, а заклинания снова активны. Великий Архив вновь сияет магическим знанием, и теперь вы можете считать себя полноценным хранителем тайн Академии.",
-      "level-complete",
-    );
+    this.showMessage("Поздравляем! Все слова найдены 🎉", "level-complete");
     document.getElementById("nextLevelBtn").style.display = "none";
   }
 
@@ -347,31 +390,6 @@ class WordSearchGame {
         messageEl.style.display = "none";
       }
     }, 2000);
-  }
-
-  handleTouchStart(event) {
-    event.preventDefault();
-    const cell = event.target;
-    const row = parseInt(cell.dataset.row);
-    const col = parseInt(cell.dataset.col);
-    this.startSelection(row, col);
-  }
-
-  handleTouchMove(event) {
-    event.preventDefault();
-    const touch = event.touches[0];
-    const element = document.elementFromPoint(touch.clientX, touch.clientY);
-
-    if (element && element.classList.contains('grid-cell')) {
-      const row = parseInt(element.dataset.row);
-      const col = parseInt(element.dataset.col);
-      this.addToSelection(row, col);
-    }
-  }
-
-  handleTouchEnd(event) {
-    event.preventDefault();
-    this.stopSelection();
   }
 
   render() {
@@ -396,16 +414,10 @@ class WordSearchGame {
         if (isSelected) cellClass += " selected";
 
         html += `<div class="${cellClass}"
-        data-row="${i}" data-col="${j}"
-        ontouchstart="game.handleTouchStart(event)"
-        ontouchmove="game.handleTouchMove(event)"
-        ontouchend="game.handleTouchEnd(event)"
-        ontouchcancel="game.handleTouchEnd(event)"
         onmousedown="game.startSelection(${i}, ${j})"
         onmouseover="game.addToSelection(${i}, ${j})"
-        onmouseup="game.stopSelection()"
         ondblclick="game.selectedCells.clear(); game.render();"
-      >${this.grid[i][j]}</div>`;
+        >${this.grid[i][j]}</div>`;
       }
     }
 

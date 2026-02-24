@@ -1,58 +1,56 @@
 <!doctype html>
 <html lang="en">
-
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>🔮 Магический архив</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Магический архив</h1>
-      <p>
-        Вы только что стали студентом Академии волшебства и вам поручили вести
-        учет хранилища всех магических знаний. К сожалению, старые свитки частично рассыпались. Ваша задача – найти
-        скрытые слова, чтобы их восстановить.
-      </p>
-    </div>
-
-    <div class="theme-info">
-      <div class="current-theme">
-        <div class="theme-badge" id="currentTheme"></div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Игра "Поиск слов"</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Игра "Поиск слов"</h1>
       </div>
-      <div class="level-progress" id="levelProgress"></div>
-    </div>
 
-    <div class="game-area">
-      <div id="grid" class="word-search-grid"></div>
-
-      <div class="words-progress">
-        <div class="progress-header">
-          <h3>Найдено слов:</h3>
-          <div class="progress-count" id="foundCount"></div>
+      <div class="theme-info">
+        <div class="current-theme">
+          <div class="theme-badge" id="currentTheme"></div>
         </div>
-        <div class="progress-bar">
-          <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+        <div class="level-progress" id="levelProgress"></div>
+      </div>
+
+      <div class="game-area">
+        <div id="grid" class="word-search-grid"></div>
+
+        <div class="words-progress">
+          <div class="progress-header">
+            <h3>Найдено слов:</h3>
+            <div class="progress-count" id="foundCount"></div>
+          </div>
+          <div class="progress-bar">
+            <div
+              class="progress-fill"
+              id="progressFill"
+              style="width: 0%"
+            ></div>
+          </div>
+          <div class="words-found-container" id="foundWords"></div>
         </div>
-        <div class="words-found-container" id="foundWords"></div>
+
+        <div id="message" class="message"></div>
+
+        <div
+          id="levelCompleteMessage"
+          class="message level-complete"
+          style="display: none"
+        >
+          <button class="next-level-btn" id="nextLevelBtn">Продолжить →</button>
+        </div>
       </div>
-
-      <div id="message" class="message"></div>
-
-      <div id="levelCompleteMessage" class="message level-complete" style="display: none">
-        <button class="next-level-btn" id="nextLevelBtn">
-          Продолжить поиски →
-        </button>
+      <div class="footer">
+        <p>Слова могут быть как по горизонтали, так и по вертикали</p>
       </div>
     </div>
-    <div class="footer">
-      <p>Слова могут быть как по горизонтали, так и по вертикали</p>
-    </div>
-  </div>
-  <script src="game.js"></script>
-</body>
-
+    <script src="game.js"></script>
+  </body>
 </html>
