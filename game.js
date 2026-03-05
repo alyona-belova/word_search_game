@@ -80,7 +80,7 @@ class WordSearchGame {
   loadLevel() {
     const randomLetter = RUSSIAN_ALPHABET[Math.floor(Math.random() * RUSSIAN_ALPHABET.length)];
     const wordsWithLetter = allWords.filter(word =>
-      word.includes(randomLetter) && word.length <= this.gridSize
+      word.includes(randomLetter) && word.length <= this.gridSize - 1
     );
 
     if (wordsWithLetter.length < 8) {
