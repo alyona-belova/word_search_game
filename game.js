@@ -77,28 +77,24 @@ class WordSearchGame {
       .addEventListener("click", () => this.nextLevel());
   }
 
-  decodeWord(encoded) {
-    return decodeURIComponent(escape(atob(encoded)));
-  }
-
   loadLevel() {
     const randomLetter = RUSSIAN_ALPHABET[Math.floor(Math.random() * RUSSIAN_ALPHABET.length)];
-    const wordsStartingWithLetter = allWords.filter(word => word.startsWith(randomLetter));
+    const wordsWithLetter = allWords.filter(word =>
+      word.includes(randomLetter) && word.length <= this.gridSize
+    );
 
-    if (wordsStartingWithLetter.length < 8) {
+    if (wordsWithLetter.length < 8) {
       return this.loadLevel();
     }
 
-    const shuffled = [...wordsStartingWithLetter].sort(() => Math.random() - 0.5);
-    this.words = shuffled.slice(0, 8);
-
-    const themeName = `Буква "${randomLetter}"`;
+    const shuffled = [...wordsWithLetter].sort(() => Math.random() - 0.5);
+    this.words = shuffled.slice(0, 8).sort((a, b) => b.length - a.length);
 
     this.foundWords.clear();
     this.selectedCells.clear();
     this.placements.clear();
 
-    this.updateThemeDisplay({ name: themeName });
+    this.updateThemeDisplay({ name: `Буква "${randomLetter}"` });
     this.generateGrid();
     this.updateGridSizeVariable();
     this.render();
