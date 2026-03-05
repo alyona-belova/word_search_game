@@ -1,61 +1,27 @@
-const themes = [
-  {
-    name: "Кинопроизводство",
-    words: [
-      "0KHQptCV0J3QkNCg0JjQmQ==",
-      "0JrQkNCh0KLQmNCd0JM=",
-      "0J/QoNCe0JTQrtCh0JXQoA==",
-      "0JTQldCa0J7QoNCQ0KbQmNCv",
-      "0JzQntCd0KLQkNCW",
-      "0JTQo9CR0JvQrA==",
-      "0KHQqtCB0JzQmtCQ",
-      "0KDQldCW0JjQodCh0JXQoA==",
-    ],
-  },
-  {
-    name: "Космос",
-    words: [
-      "0J7QoNCR0JjQotCQ",
-      "0KHQotCr0JrQntCS0JrQkA==",
-      "0JrQkNCf0KHQo9Cb0JA=",
-      "0K3QmtCY0J/QkNCW",
-      "0JzQntCU0KPQm9Cs",
-      "0KHQn9Cj0KLQndCY0Jo=",
-      "0KDQkNCa0JXQotCQ",
-      "0KLQoNCQ0JXQmtCi0J7QoNCY0K8=",
-    ],
-  },
-  {
-    name: "Городская среда",
-    words: [
-      "0JHQo9Cb0KzQktCQ0KA=",
-      "0KTQntCd0JDQoNCs",
-      "0KLQoNCe0KLQo9CQ0KA=",
-      "0KHQmtCS0JXQoA==",
-      "0JLQmNCi0KDQmNCd0JA=",
-      "0J/QldCg0JXQpdCe0JQ=",
-      "0J7QodCi0JDQndCe0JLQmtCQ",
-      "0JDQoNCa0JA=",
-    ],
-  },
-  {
-    name: "Машинное обучение",
-    words: [
-      "0JTQkNCi0JDQodCV0KI=",
-      "0J/QoNCY0JfQndCQ0Jo=",
-      "0JzQldCi0KDQmNCa0JA=",
-      "0JzQntCU0JXQm9Cs",
-      "0JPQoNCQ0JTQmNCV0J3Qog==",
-      "0JrQm9CQ0KHQotCV0KA=",
-      "0KDQldCT0KDQldCh0KHQmNCv",
-      "0J/QoNCV0JTQodCa0JDQl9CQ0J3QmNCV",
-    ],
-  },
+async function loadWordsFromFile() {
+  try {
+    const response = await fetch('data/words_list.txt');
+    const text = await response.text();
+    return text.split('\n')
+      .map(word => word.trim().toUpperCase())
+      .filter(word => word.length > 0);
+  } catch (error) {
+    console.error('Ошибка загрузки слов:', error);
+    return [];
+  }
+}
+
+let allWords = [];
+
+const RUSSIAN_ALPHABET = [
+  "А", "Б", "В", "Г", "Д", "Е", "Ё", "Ж", "З", "И", "Й", "К", "Л", "М",
+  "Н", "О", "П", "Р", "С", "Т", "У", "Ф", "Х", "Ц", "Ч", "Ш", "Щ", "Ъ",
+  "Ы", "Ь", "Э", "Ю", "Я"
 ];
 
 class WordSearchGame {
   constructor() {
-    this.currentLevelIndex = 0;
+    this.currentLevel = 1;
     this.grid = [];
     this.words = [];
     this.foundWords = new Set();
@@ -68,9 +34,36 @@ class WordSearchGame {
     this.init();
   }
 
-  init() {
-    this.loadLevel(this.currentLevelIndex);
+  async init() {
+    allWords = await loadWordsFromFile();
+    this.loadLevel();
     this.setupEventListeners();
+    this.loadProgress();
+  }
+
+  saveProgress() {
+    const progress = {
+      currentLevel: this.currentLevel,
+    };
+    localStorage.setItem('wordSearchProgress', JSON.stringify(progress));
+  }
+
+  loadProgress() {
+    const saved = localStorage.getItem('wordSearchProgress');
+    if (saved) {
+      try {
+        const progress = JSON.parse(saved);
+        this.currentLevel = progress.currentLevel || 1;
+      } catch (e) {
+        console.error('Ошибка загрузки прогресса:', e);
+      }
+    }
+  }
+
+  resetProgress() {
+    localStorage.removeItem('wordSearchProgress');
+    this.currentLevel = 1;
+    this.loadLevel();
   }
 
   updateGridSizeVariable() {
@@ -88,27 +81,29 @@ class WordSearchGame {
     return decodeURIComponent(escape(atob(encoded)));
   }
 
-  loadLevel(index) {
-    if (index >= themes.length) {
-      this.showGameComplete();
-      return;
+  loadLevel() {
+    const randomLetter = RUSSIAN_ALPHABET[Math.floor(Math.random() * RUSSIAN_ALPHABET.length)];
+    const wordsStartingWithLetter = allWords.filter(word => word.startsWith(randomLetter));
+
+    if (wordsStartingWithLetter.length < 8) {
+      return this.loadLevel();
     }
 
-    const theme = themes[index];
-    this.words = [...theme.words]
-      .map((w) => this.decodeWord(w).toUpperCase())
-      .sort((a, b) => b.length - a.length);
+    const shuffled = [...wordsStartingWithLetter].sort(() => Math.random() - 0.5);
+    this.words = shuffled.slice(0, 8);
+
+    const themeName = `Буква "${randomLetter}"`;
 
     this.foundWords.clear();
     this.selectedCells.clear();
     this.placements.clear();
 
-    this.updateThemeDisplay(theme);
+    this.updateThemeDisplay({ name: themeName });
     this.generateGrid();
     this.updateGridSizeVariable();
     this.render();
 
-    if (index === 0 && !this.demoWordShown) {
+    if (this.currentLevel === 1 && !this.demoWordShown) {
       this.autoFindDemoWord();
       this.demoWordShown = true;
     }
@@ -132,9 +127,7 @@ class WordSearchGame {
 
   updateThemeDisplay(theme) {
     document.getElementById("currentTheme").textContent = theme.name;
-    document.getElementById("levelProgress").textContent = `Уровень ${
-      this.currentLevelIndex + 1
-    }/${themes.length}`;
+    document.getElementById("levelProgress").textContent = `Уровень: ${this.currentLevel}`;
   }
 
   generateGrid() {
@@ -210,48 +203,12 @@ class WordSearchGame {
   }
 
   fillEmptyCells() {
-    const RUSSIAN_ALPHABET = [
-      "А",
-      "Б",
-      "В",
-      "Г",
-      "Д",
-      "Е",
-      "Ё",
-      "Ж",
-      "З",
-      "И",
-      "Й",
-      "К",
-      "Л",
-      "М",
-      "Н",
-      "О",
-      "П",
-      "Р",
-      "С",
-      "Т",
-      "У",
-      "Ф",
-      "Х",
-      "Ц",
-      "Ч",
-      "Ш",
-      "Щ",
-      "Ъ",
-      "Ы",
-      "Ь",
-      "Э",
-      "Ю",
-      "Я",
-    ];
-
     for (let i = 0; i < this.gridSize; i++) {
       for (let j = 0; j < this.gridSize; j++) {
         if (this.grid[i][j] === null) {
           this.grid[i][j] =
             RUSSIAN_ALPHABET[
-              Math.floor(Math.random() * RUSSIAN_ALPHABET.length)
+            Math.floor(Math.random() * RUSSIAN_ALPHABET.length)
             ];
         }
       }
@@ -368,20 +325,13 @@ class WordSearchGame {
   levelComplete() {
     this.showMessage("Ура! Уровень пройден!", "level-complete");
     document.getElementById("levelCompleteMessage").style.display = "block";
+
+    this.currentLevel++;
+    this.saveProgress();
   }
 
   nextLevel() {
-    this.currentLevelIndex++;
-    if (this.currentLevelIndex < themes.length) {
-      this.loadLevel(this.currentLevelIndex);
-    } else {
-      this.showGameComplete();
-    }
-  }
-
-  showGameComplete() {
-    this.showMessage("Поздравляем! Все слова найдены 🎉", "level-complete");
-    document.getElementById("nextLevelBtn").style.display = "none";
+    this.loadLevel();
   }
 
   showMessage(text, type) {
@@ -391,9 +341,7 @@ class WordSearchGame {
     messageEl.style.display = "block";
 
     setTimeout(() => {
-      if (type !== "level-complete") {
-        messageEl.style.display = "none";
-      }
+      messageEl.style.display = "none";
     }, 2000);
   }
 
