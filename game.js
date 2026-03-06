@@ -1,12 +1,13 @@
 async function loadWordsFromFile() {
   try {
-    const response = await fetch('data/words_list.txt');
+    const response = await fetch("data/words_list.txt");
     const text = await response.text();
-    return text.split('\n')
-      .map(word => word.trim().toUpperCase())
-      .filter(word => word.length > 0);
+    return text
+      .split("\n")
+      .map((word) => word.trim().toUpperCase())
+      .filter((word) => word.length > 0);
   } catch (error) {
-    console.error('Ошибка загрузки слов:', error);
+    console.error("Ошибка загрузки слов:", error);
     return [];
   }
 }
@@ -14,9 +15,39 @@ async function loadWordsFromFile() {
 let allWords = [];
 
 const RUSSIAN_ALPHABET = [
-  "А", "Б", "В", "Г", "Д", "Е", "Ё", "Ж", "З", "И", "Й", "К", "Л", "М",
-  "Н", "О", "П", "Р", "С", "Т", "У", "Ф", "Х", "Ц", "Ч", "Ш", "Щ", "Ъ",
-  "Ы", "Ь", "Э", "Ю", "Я"
+  "А",
+  "Б",
+  "В",
+  "Г",
+  "Д",
+  "Е",
+  "Ё",
+  "Ж",
+  "З",
+  "И",
+  "Й",
+  "К",
+  "Л",
+  "М",
+  "Н",
+  "О",
+  "П",
+  "Р",
+  "С",
+  "Т",
+  "У",
+  "Ф",
+  "Х",
+  "Ц",
+  "Ч",
+  "Ш",
+  "Щ",
+  "Ъ",
+  "Ы",
+  "Ь",
+  "Э",
+  "Ю",
+  "Я",
 ];
 
 class WordSearchGame {
@@ -45,42 +76,44 @@ class WordSearchGame {
     const progress = {
       currentLevel: this.currentLevel,
     };
-    localStorage.setItem('wordSearchProgress', JSON.stringify(progress));
+    localStorage.setItem("wordSearchProgress", JSON.stringify(progress));
   }
 
   loadProgress() {
-    const saved = localStorage.getItem('wordSearchProgress');
+    const saved = localStorage.getItem("wordSearchProgress");
     if (saved) {
       try {
         const progress = JSON.parse(saved);
         this.currentLevel = progress.currentLevel || 1;
       } catch (e) {
-        console.error('Ошибка загрузки прогресса:', e);
+        console.error("Ошибка загрузки прогресса:", e);
       }
     }
   }
 
   resetProgress() {
-    localStorage.removeItem('wordSearchProgress');
+    localStorage.removeItem("wordSearchProgress");
     this.currentLevel = 1;
     this.loadLevel();
   }
 
   updateGridSizeVariable() {
-    document.documentElement.style.setProperty('--grid-size', this.gridSize);
+    document.documentElement.style.setProperty("--grid-size", this.gridSize);
   }
 
   setupEventListeners() {
     document.addEventListener("mouseup", () => this.stopSelection());
+    document.addEventListener("touchend", () => this.stopSelection());
     document
       .getElementById("nextLevelBtn")
       .addEventListener("click", () => this.nextLevel());
   }
 
   loadLevel() {
-    const randomLetter = RUSSIAN_ALPHABET[Math.floor(Math.random() * RUSSIAN_ALPHABET.length)];
-    const wordsWithLetter = allWords.filter(word =>
-      word.includes(randomLetter) && word.length <= this.gridSize - 1
+    const randomLetter =
+      RUSSIAN_ALPHABET[Math.floor(Math.random() * RUSSIAN_ALPHABET.length)];
+    const wordsWithLetter = allWords.filter(
+      (word) => word.includes(randomLetter) && word.length <= this.gridSize - 1,
     );
 
     if (wordsWithLetter.length < 8) {
@@ -123,7 +156,8 @@ class WordSearchGame {
 
   updateThemeDisplay(theme) {
     document.getElementById("currentTheme").textContent = theme.name;
-    document.getElementById("levelProgress").textContent = `Уровень: ${this.currentLevel}`;
+    document.getElementById("levelProgress").textContent =
+      `Уровень: ${this.currentLevel}`;
   }
 
   generateGrid() {
@@ -204,7 +238,7 @@ class WordSearchGame {
         if (this.grid[i][j] === null) {
           this.grid[i][j] =
             RUSSIAN_ALPHABET[
-            Math.floor(Math.random() * RUSSIAN_ALPHABET.length)
+              Math.floor(Math.random() * RUSSIAN_ALPHABET.length)
             ];
         }
       }
@@ -365,12 +399,33 @@ class WordSearchGame {
         html += `<div class="${cellClass}"
         onmousedown="game.startSelection(${i}, ${j})"
         onmouseover="game.addToSelection(${i}, ${j})"
+        ontouchstart="game.startSelection(${i}, ${j})"
+        ontouchmove="game.handleTouchMove(event)"
         ondblclick="game.selectedCells.clear(); game.render();"
         >${this.grid[i][j]}</div>`;
       }
     }
 
     gridEl.innerHTML = html;
+  }
+
+  handleTouchMove(event) {
+    event.preventDefault();
+
+    const touch = event.touches[0];
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+
+    if (!element) return;
+
+    const cell = element.closest(".grid-cell");
+    if (!cell) return;
+
+    const index = Array.from(cell.parentNode.children).indexOf(cell);
+
+    const row = Math.floor(index / this.gridSize);
+    const col = index % this.gridSize;
+
+    this.addToSelection(row, col);
   }
 
   renderFoundWords() {
