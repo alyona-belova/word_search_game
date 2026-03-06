@@ -3,10 +3,10 @@
   padding: 0;
   box-sizing: border-box;
   --grid-size: 12;
-  --blue-color: #C2E2FA;
-  --bg-color: #FFF1CB;
-  --main-color: #FF8F8F;
-  --secondary-color: #B7A3E3;
+  --blue-color: #c2e2fa;
+  --bg-color: #fff1cb;
+  --main-color: #ff8f8f;
+  --secondary-color: #b7a3e3;
   --grey-color: #e9e9e9;
   --light-grey-color: #f8f8f8;
   --dark-grey-color: #757575;
@@ -310,6 +310,10 @@ body {
     justify-content: center;
     display: inline-grid;
     box-sizing: border-box;
+  }
+
+  #grid {
+    touch-action: none;
   }
 
   .grid-cell {
