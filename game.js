@@ -67,16 +67,20 @@ class WordSearchGame {
 
   async init() {
     allWords = await loadWordsFromFile();
+    this.loadProgress();
     this.loadLevel();
     this.setupEventListeners();
-    this.loadProgress();
   }
 
   saveProgress() {
-    const progress = {
-      currentLevel: this.currentLevel,
-    };
-    localStorage.setItem("wordSearchProgress", JSON.stringify(progress));
+    try {
+      const progress = {
+        currentLevel: this.currentLevel,
+      };
+      localStorage.setItem("wordSearchProgress", JSON.stringify(progress));
+    } catch (e) {
+      console.error("Ошибка сохранения:", e);
+    }
   }
 
   loadProgress() {
@@ -361,6 +365,7 @@ class WordSearchGame {
   }
 
   nextLevel() {
+    this.saveProgress();
     this.loadLevel();
   }
 
