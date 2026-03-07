@@ -67,8 +67,10 @@ class WordSearchGame {
 
   async init() {
     allWords = await loadWordsFromFile();
-    this.loadProgress();
-    this.loadLevel();
+    const loaded = this.loadProgress();
+    if (!loaded) {
+      this.loadLevel();
+    }
     this.setupEventListeners();
   }
 
@@ -89,7 +91,7 @@ class WordSearchGame {
 
   loadProgress() {
     const saved = localStorage.getItem("wordSearchProgress");
-    if (!saved) return;
+    if (!saved) return false;
 
     try {
       const progress = JSON.parse(saved);
@@ -101,10 +103,13 @@ class WordSearchGame {
         this.foundWords = new Set(progress.foundWords || []);
         this.rebuildPlacements();
         this.render();
+        return true;
       }
     } catch (e) {
       console.error("Ошибка загрузки прогресса:", e);
     }
+
+    return false;
   }
 
   resetProgress() {
@@ -267,8 +272,8 @@ class WordSearchGame {
         return false;
       }
 
-      if (this.grid[row][col] !== null && this.grid[row][col] !== word[i]) {
-        return false;
+      if (this.grid[row][col] !== null) {
+        return false; // no overlap
       }
     }
 
@@ -377,6 +382,8 @@ class WordSearchGame {
 
     if (foundWord) {
       this.foundWords.add(foundWord);
+      this.saveProgress();
+
       this.showMessage(`Найдено: ${foundWord}!`, "success");
 
       if (this.foundWords.size === this.words.length) {
