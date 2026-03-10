@@ -107,6 +107,11 @@ class WordSearchGame {
         this.updateThemeDisplay({ name: this.levelName });
         this.rebuildPlacements();
         this.render();
+        if (this.foundWords.size === this.words.length) {
+          document.getElementById("levelCompleteMessage").style.display = "block";
+        } else {
+          document.getElementById("levelCompleteMessage").style.display = "none";
+        }
         return true;
       }
     } catch (e) {
@@ -306,7 +311,7 @@ class WordSearchGame {
         if (this.grid[i][j] === null) {
           this.grid[i][j] =
             RUSSIAN_ALPHABET[
-              Math.floor(Math.random() * RUSSIAN_ALPHABET.length)
+            Math.floor(Math.random() * RUSSIAN_ALPHABET.length)
             ];
         }
       }
