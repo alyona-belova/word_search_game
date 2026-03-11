@@ -1,11 +1,14 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta property="og:title" content="Игра по поиску слов" />
+    <meta property="og:title" content="Игра 'Поиск слов' — найди все слова" />
     <meta property="og:image" content="game_logo.png" />
     <title>Игра "Поиск слов"</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@200..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -16,41 +19,46 @@
 
       <div class="theme-info">
         <div class="current-theme">
-          <div class="theme-badge" id="currentTheme"></div>
+          <div class="theme-badge" id="currentTheme">—</div>
         </div>
-        <div class="level-progress" id="levelProgress"></div>
+        <div class="level-progress" id="levelProgress">Уровень: 1</div>
       </div>
 
       <div class="game-area">
-        <div id="grid" class="word-search-grid"></div>
+        <div class="grid-wrapper">
+          <div id="grid" class="word-search-grid"></div>
+        </div>
 
         <div class="words-progress">
           <div class="progress-header">
-            <h3>Найдено слов:</h3>
-            <div class="progress-count" id="foundCount"></div>
+            <h3>Найдено слов</h3>
+            <div class="progress-count" id="foundCount">0/0</div>
           </div>
           <div class="progress-bar">
-            <div
-              class="progress-fill"
-              id="progressFill"
-              style="width: 0%"
-            ></div>
+            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
           </div>
-          <div class="words-found-container" id="foundWords"></div>
+          <div class="words-found-container" id="foundWords">
+            <div class="empty-words">Пока ничего не найдено</div>
+          </div>
         </div>
 
         <div id="message" class="message"></div>
 
-        <div
-          id="levelCompleteMessage"
-          class="message level-complete"
-          style="display: none"
-        >
-          <button class="next-level-btn" id="nextLevelBtn">Продолжить →</button>
+        <div id="levelCompleteMessage" class="level-complete-card" style="display: none">
+          <div class="confetti">🎉</div>
+          <p class="complete-title">Уровень пройден!</p>
+          <button class="next-level-btn" id="nextLevelBtn">
+            <span>Следующий уровень</span> 
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </button>
         </div>
       </div>
       <div class="footer">
-        <p>Буква текущего уровня может находиться в любом месте слова. Слова располагаются по горизонтали и по вертикали.</p>
+        <div class="footer-content">
+          <p>Буква текущего уровня может находиться в любом месте слова. Слова располагаются по горизонтали и по вертикали.</p>
+        </div>
       </div>
     </div>
     <script src="game.js"></script>
