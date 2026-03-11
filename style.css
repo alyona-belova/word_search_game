@@ -216,7 +216,7 @@ body {
   border-radius: 15px;
   display: none;
   font-size: 1.1em;
-  color: black;
+  color: var(--dark-grey-color);
   animation: slideIn 0.3s ease;
 }
 
