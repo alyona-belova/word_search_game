@@ -73,7 +73,10 @@ class WordSearchGame {
     this.levelName = "";
     this.themeLetter = "";
     this.extraWords = [];
+    this.foundExtraWords = new Set();
     this.hintsUsed = 0;
+    this.extraWordsFoundCount = 0;
+    this.wordStartCells = new Map();
 
     this.init();
   }
@@ -96,7 +99,9 @@ class WordSearchGame {
         foundWords: Array.from(this.foundWords),
         levelName: this.levelName,
         hintsUsed: this.hintsUsed,
+        extraWordsFoundCount: this.extraWordsFoundCount,
         extraWords: this.extraWords,
+        foundExtraWords: Array.from(this.foundExtraWords),
         themeLetter: this.themeLetter,
       };
 
@@ -120,7 +125,9 @@ class WordSearchGame {
         this.levelName = progress.levelName || "";
         this.foundWords = new Set(progress.foundWords || []);
         this.hintsUsed = progress.hintsUsed || 0;
+        this.extraWordsFoundCount = progress.extraWordsFoundCount || 0;
         this.extraWords = progress.extraWords || [];
+        this.foundExtraWords = new Set(progress.foundExtraWords || []);
         this.themeLetter = progress.themeLetter || "";
         this.updateThemeDisplay({ name: this.levelName });
         this.rebuildPlacements();
@@ -166,9 +173,17 @@ class WordSearchGame {
     this.saveProgress();
   }
 
-  loadLevel() {
+  loadLevel(attempt = 0) {
+    if (attempt > 50) {
+      console.error("Не удалось подобрать букву с достаточным количеством слов");
+      return;
+    }
+
     this.hintsUsed = 0;
+    this.extraWordsFoundCount = 0;
     this.extraWords = [];
+    this.foundExtraWords = new Set();
+    this.wordStartCells.clear();
 
     const randomLetter =
       RUSSIAN_ALPHABET[Math.floor(Math.random() * RUSSIAN_ALPHABET.length)];
@@ -179,7 +194,7 @@ class WordSearchGame {
     this.themeLetter = randomLetter;
 
     if (wordsWithLetter.length < 8) {
-      return this.loadLevel(Math.random());
+      return this.loadLevel(attempt + 1);
     }
 
     const short = wordsWithLetter.filter((w) => w.length >= 4 && w.length <= 5);
@@ -208,7 +223,6 @@ class WordSearchGame {
 
     this.levelName = `Буква "${randomLetter}"`;
     this.updateThemeDisplay({ name: this.levelName });
-    this.words.sort((a, b) => b.length - a.length);
     this.generateGrid();
     this.updateGridSizeVariable();
     this.render();
@@ -223,6 +237,7 @@ class WordSearchGame {
 
   rebuildPlacements() {
     this.placements.clear();
+    this.wordStartCells.clear();
     const allPlacedWords = [...this.words, ...this.extraWords];
     for (let word of allPlacedWords) {
       for (let i = 0; i < this.gridSize; i++) {
@@ -314,20 +329,19 @@ class WordSearchGame {
   }
 
   placeExtraWords() {
-    const candidates = allWords.filter(
-      (word) =>
-        !word.includes(this.themeLetter) &&
-        !this.words.includes(word) &&
-        word.length <= this.gridSize,
-    );
+    const candidates = allWords
+      .filter(
+        (word) =>
+          !word.includes(this.themeLetter) &&
+          !this.words.includes(word) &&
+          word.length <= this.gridSize,
+      )
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 80);
 
-    const shuffled = [...candidates].sort(() => Math.random() - 0.5);
-    let placed = 0;
-    for (let word of shuffled) {
-      if (placed >= 3) break; // limit extra words
+    for (const word of candidates) {
       if (this.placeWord(word)) {
         this.extraWords.push(word);
-        placed++;
       }
     }
   }
@@ -350,6 +364,10 @@ class WordSearchGame {
   }
 
   commitPlacement(word, { row, col, direction }) {
+    if (!this.wordStartCells.has(word)) {
+      this.wordStartCells.set(word, { row, col });
+    }
+
     for (let i = 0; i < word.length; i++) {
       const r = row + direction[0] * i;
       const c = col + direction[1] * i;
@@ -465,12 +483,19 @@ class WordSearchGame {
       if (
         wordInAll &&
         !this.words.includes(wordInAll) &&
-        !this.foundWords.has(wordInAll)
+        !this.foundExtraWords.has(wordInAll)
       ) {
-        this.hintsUsed++;
-        this.saveProgress();
-        this.giveHint();
-        this.showMessage("Слово из другого уровня!", "success");
+        this.foundExtraWords.add(wordInAll);
+        this.extraWordsFoundCount++;
+        if (this.extraWordsFoundCount % 3 === 0) {
+          this.hintsUsed++;
+          const hintWord = this.giveHint();
+          this.saveProgress();
+          this.showMessage(`Подсказка: ищи слово "${hintWord}"`, "level-complete");
+        } else {
+          this.saveProgress();
+          this.showMessage("Слово из другого уровня!", "success");
+        }
       } else {
         this.showMessage("Данного слова нет в текущем словаре", "error");
       }
@@ -482,27 +507,21 @@ class WordSearchGame {
 
   giveHint() {
     const unfound = this.words.filter((word) => !this.foundWords.has(word));
-    if (unfound.length === 0) return;
+    if (unfound.length === 0) return null;
     const hintWord = unfound[Math.floor(Math.random() * unfound.length)];
 
-    const cells = [];
-    for (let [key, words] of this.placements.entries()) {
-      if (words.has(hintWord)) {
-        cells.push(key);
-      }
-    }
+    const start = this.wordStartCells.get(hintWord);
+    if (!start) return hintWord;
 
-    const randomCell = cells[Math.floor(Math.random() * cells.length)];
-    const [r, c] = randomCell.split(",").map(Number);
-    const index = r * this.gridSize + c;
+    const index = start.row * this.gridSize + start.col;
     const cell = document.getElementById("grid")?.children[index];
 
     if (cell) {
       cell.classList.add("hint");
-      setTimeout(() => cell.classList.remove("hint"), 1500);
+      setTimeout(() => cell.classList.remove("hint"), 2000);
     }
 
-    this.showMessage(`Подсказка: ищи слово "${hintWord}"`, "level-complete");
+    return hintWord;
   }
 
   checkStraightLine(cells) {
@@ -635,6 +654,10 @@ class WordSearchGame {
 
     document.getElementById("foundCount").textContent = `${found}/${total}`;
     document.getElementById("progressFill").style.width = `${percentage}%`;
+
+    document.getElementById("hintsUsedCount").textContent = this.hintsUsed;
+    const toNext = 3 - (this.extraWordsFoundCount % 3);
+    document.getElementById("hintsNextCount").textContent = toNext;
   }
 }
 

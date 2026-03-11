@@ -216,7 +216,24 @@ body {
   background: var(--grey-color);
   border-radius: 20px;
   overflow: hidden;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+}
+
+.hints-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--dark-grey-color);
+  margin-bottom: 20px;
+  padding: 8px 12px;
+  background: var(--light-grey-color);
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--grey-color);
+}
+
+.hints-info span {
+  font-weight: 700;
+  color: var(--secondary-dark-color);
 }
 
 .progress-fill {
