@@ -50,6 +50,15 @@ const RUSSIAN_ALPHABET = [
   "Я",
 ];
 
+function removePrefixConflicts(words) {
+  return words.filter(
+    (w) =>
+      !words.some(
+        (other) => other !== w && (other.startsWith(w) || w.startsWith(other)),
+      ),
+  );
+}
+
 class WordSearchGame {
   constructor() {
     this.currentLevel = 1;
@@ -62,9 +71,9 @@ class WordSearchGame {
     this.placements = new Map();
     this.demoWordShown = false;
     this.levelName = "";
-    this.themeLetter = ''; 
+    this.themeLetter = "";
     this.extraWords = [];
-    this.hintsUsed = 0;  
+    this.hintsUsed = 0;
 
     this.init();
   }
@@ -112,14 +121,16 @@ class WordSearchGame {
         this.foundWords = new Set(progress.foundWords || []);
         this.hintsUsed = progress.hintsUsed || 0;
         this.extraWords = progress.extraWords || [];
-        this.themeLetter = progress.themeLetter || '';
+        this.themeLetter = progress.themeLetter || "";
         this.updateThemeDisplay({ name: this.levelName });
         this.rebuildPlacements();
         this.render();
         if (this.foundWords.size === this.words.length) {
-          document.getElementById("levelCompleteMessage").style.display = "block";
+          document.getElementById("levelCompleteMessage").style.display =
+            "block";
         } else {
-          document.getElementById("levelCompleteMessage").style.display = "none";
+          document.getElementById("levelCompleteMessage").style.display =
+            "none";
         }
         return true;
       }
@@ -148,7 +159,17 @@ class WordSearchGame {
       .addEventListener("click", () => this.nextLevel());
   }
 
+  nextLevel() {
+    this.currentLevel++;
+    this.extraWords = [];
+    this.loadLevel();
+    this.saveProgress();
+  }
+
   loadLevel() {
+    this.hintsUsed = 0;
+    this.extraWords = [];
+
     const randomLetter =
       RUSSIAN_ALPHABET[Math.floor(Math.random() * RUSSIAN_ALPHABET.length)];
     const wordsWithLetter = allWords.filter(
@@ -156,7 +177,6 @@ class WordSearchGame {
     );
 
     this.themeLetter = randomLetter;
-    this.hintsUsed = 0;
 
     if (wordsWithLetter.length < 8) {
       return this.loadLevel(Math.random());
@@ -176,7 +196,11 @@ class WordSearchGame {
       ...pickRandom(short, 2),
       ...pickRandom(medium, 3),
       ...pickRandom(long, 3),
-    ].sort((a, b) => b.length - a.length);
+    ];
+
+    this.words = removePrefixConflicts(this.words).sort(
+      (a, b) => b.length - a.length,
+    );
 
     this.foundWords.clear();
     this.selectedCells.clear();
@@ -184,6 +208,7 @@ class WordSearchGame {
 
     this.levelName = `Буква "${randomLetter}"`;
     this.updateThemeDisplay({ name: this.levelName });
+    this.words.sort((a, b) => b.length - a.length);
     this.generateGrid();
     this.updateGridSizeVariable();
     this.render();
@@ -289,16 +314,17 @@ class WordSearchGame {
   }
 
   placeExtraWords() {
-    const candidates = allWords.filter(word => 
-      !word.includes(this.themeLetter) && 
-      !this.words.includes(word) && 
-      word.length <= this.gridSize
+    const candidates = allWords.filter(
+      (word) =>
+        !word.includes(this.themeLetter) &&
+        !this.words.includes(word) &&
+        word.length <= this.gridSize,
     );
 
     const shuffled = [...candidates].sort(() => Math.random() - 0.5);
     let placed = 0;
     for (let word of shuffled) {
-      if (placed >= 10) break; // limit extra words
+      if (placed >= 3) break; // limit extra words
       if (this.placeWord(word)) {
         this.extraWords.push(word);
         placed++;
@@ -344,7 +370,7 @@ class WordSearchGame {
         if (this.grid[i][j] === null) {
           this.grid[i][j] =
             RUSSIAN_ALPHABET[
-            Math.floor(Math.random() * RUSSIAN_ALPHABET.length)
+              Math.floor(Math.random() * RUSSIAN_ALPHABET.length)
             ];
         }
       }
@@ -433,15 +459,21 @@ class WordSearchGame {
         this.levelComplete();
       }
     } else {
-      const wordInAll = allWords.find(w => w === selectedWord || w === reversedWord);
-      if (wordInAll && !this.foundWords.has(wordInAll) && !this.extraWords.includes(wordInAll)) {
+      const wordInAll = allWords.find(
+        (w) => w === selectedWord || w === reversedWord,
+      );
+      if (
+        wordInAll &&
+        !this.words.includes(wordInAll) &&
+        !this.foundWords.has(wordInAll)
+      ) {
         this.hintsUsed++;
         this.saveProgress();
         this.giveHint();
         this.showMessage("Слово из другого уровня!", "success");
       } else {
         this.showMessage("Данного слова нет в текущем словаре", "error");
-  }
+      }
     }
 
     this.selectedCells.clear();
@@ -449,7 +481,7 @@ class WordSearchGame {
   }
 
   giveHint() {
-    const unfound = this.words.filter(word => !this.foundWords.has(word));
+    const unfound = this.words.filter((word) => !this.foundWords.has(word));
     if (unfound.length === 0) return;
     const hintWord = unfound[Math.floor(Math.random() * unfound.length)];
 
@@ -460,19 +492,17 @@ class WordSearchGame {
       }
     }
 
-    cells.forEach(key => {
-      const [r, c] = key.split(',').map(Number);
-      const index = r * this.gridSize + c;
-      const cell = document.getElementById('grid')?.children[index];
-      if (cell) {
-        cell.classList.add('hint');
-        setTimeout(() => {
-          cell.classList.remove('hint');
-        }, 1500);
-      }
-    });
+    const randomCell = cells[Math.floor(Math.random() * cells.length)];
+    const [r, c] = randomCell.split(",").map(Number);
+    const index = r * this.gridSize + c;
+    const cell = document.getElementById("grid")?.children[index];
 
-    this.showMessage(`Подсказка: ищи слово "${hintWord}"`, 'level-complete');
+    if (cell) {
+      cell.classList.add("hint");
+      setTimeout(() => cell.classList.remove("hint"), 1500);
+    }
+
+    this.showMessage(`Подсказка: ищи слово "${hintWord}"`, "level-complete");
   }
 
   checkStraightLine(cells) {
@@ -500,21 +530,22 @@ class WordSearchGame {
   levelComplete() {
     let message = "";
     if (this.hintsUsed === 0) {
-      message = '😻 Отлично! Без подсказок!';
+      message = "😻 Отлично! Без подсказок!";
     } else if (this.hintsUsed === 1) {
-      message = '🙀 Ого! Всего одна подсказка!';
+      message = "🙀 Ого! Всего одна подсказка!";
     } else if (this.hintsUsed === 2) {
-      message = '😼 Неплохо! Две подсказки.';
+      message = "😼 Неплохо! Две подсказки.";
     } else {
-      message = '😿 Сложный уровень? Не сдавайся!';
+      message = "😿 Сложный уровень? Не сдавайся!";
     }
 
-    const confettiDiv = document.querySelector('#levelCompleteMessage .confetti');
+    const confettiDiv = document.querySelector(
+      "#levelCompleteMessage .confetti",
+    );
     confettiDiv.textContent = message;
 
     document.getElementById("levelCompleteMessage").style.display = "block";
 
-    this.currentLevel++;
     this.saveProgress();
   }
 
@@ -551,12 +582,14 @@ class WordSearchGame {
         if (isSelected) cellClass += " selected";
 
         html += `<div class="${cellClass}"
+        data-row="${i}"
+        data-col="${j}"
         onmousedown="game.startSelection(${i}, ${j})"
         onmouseover="game.addToSelection(${i}, ${j})"
         ontouchstart="game.startSelection(${i}, ${j})"
         ontouchmove="game.handleTouchMove(event)"
-        ondblclick="game.selectedCells.clear(); game.render();"
-        >${this.grid[i][j]}</div>`;
+        >
+        ${this.grid[i][j]}</div>`;
       }
     }
 
@@ -574,10 +607,8 @@ class WordSearchGame {
     const cell = element.closest(".grid-cell");
     if (!cell) return;
 
-    const index = Array.from(cell.parentNode.children).indexOf(cell);
-
-    const row = Math.floor(index / this.gridSize);
-    const col = index % this.gridSize;
+    const row = parseInt(cell.dataset.row);
+    const col = parseInt(cell.dataset.col);
 
     this.addToSelection(row, col);
   }
@@ -587,7 +618,8 @@ class WordSearchGame {
     const foundArray = Array.from(this.foundWords);
 
     if (foundArray.length === 0) {
-      container.innerHTML = '<div class="empty-words">Пока ничего не найдено</div>';
+      container.innerHTML =
+        '<div class="empty-words">Пока ничего не найдено</div>';
       return;
     }
 

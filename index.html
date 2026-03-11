@@ -6,9 +6,12 @@
     <meta property="og:title" content="Игра 'Поиск слов' — найди все слова" />
     <meta property="og:image" content="game_logo.png" />
     <title>Игра "Поиск слов"</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@200..900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@200..900&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -35,7 +38,11 @@
             <div class="progress-count" id="foundCount">0/0</div>
           </div>
           <div class="progress-bar">
-            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+            <div
+              class="progress-fill"
+              id="progressFill"
+              style="width: 0%"
+            ></div>
           </div>
           <div class="words-found-container" id="foundWords">
             <div class="empty-words">Пока ничего не найдено</div>
@@ -44,20 +51,34 @@
 
         <div id="message" class="message"></div>
 
-        <div id="levelCompleteMessage" class="level-complete-card" style="display: none">
+        <div
+          id="levelCompleteMessage"
+          class="level-complete-card"
+          style="display: none"
+        >
           <div class="confetti"></div>
           <p class="complete-title">Уровень пройден!</p>
           <button class="next-level-btn" id="nextLevelBtn">
-            <span>Следующий уровень</span> 
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M5 12h14M12 5l7 7-7 7"/>
+            <span>Следующий уровень</span>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </button>
         </div>
       </div>
       <div class="footer">
         <div class="footer-content">
-          <p>Буква текущего уровня может находиться в любом месте слова. Слова располагаются по горизонтали и по вертикали.</p>
+          <p>
+            Буква текущего уровня может находиться в любом месте слова. Слова
+            располагаются по горизонтали и по вертикали.
+          </p>
         </div>
       </div>
     </div>
