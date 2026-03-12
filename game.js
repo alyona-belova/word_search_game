@@ -190,6 +190,11 @@ class WordSearchGame {
     document
       .getElementById("nextLevelBtn")
       .addEventListener("click", () => this.nextLevel());
+
+    window.addEventListener("resize", () => {
+      clearTimeout(this._resizeTimer);
+      this._resizeTimer = setTimeout(() => this.drawLines(), 100);
+    });
   }
 
   nextLevel() {
@@ -287,6 +292,7 @@ class WordSearchGame {
       `Слово "${demoWord}" уже найдено — попробуйте найти остальные!`,
       "level-complete",
     );
+    this.saveProgress();
     this.render();
   }
 
@@ -305,6 +311,7 @@ class WordSearchGame {
     for (const word of this.words) {
       this.placeWordSnaking(word);
     }
+    this.words = this.words.filter((word) => this.wordPaths.has(word));
     this.placeExtraWords();
     this.fillEmptyCells();
   }
@@ -649,8 +656,6 @@ class WordSearchGame {
         parseInt(cell.dataset.col),
       );
     };
-
-    this.renderWordList();
   }
 
   updateCellStates() {
