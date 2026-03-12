@@ -142,7 +142,7 @@ body {
 }
 
 .grid-wrapper::before {
-  content: "WORD SEARCH";
+  content: "word search game";
   position: absolute;
   top: -11px;
   left: 50%;
@@ -155,7 +155,6 @@ body {
   padding: 2px 12px;
   border-radius: var(--radius-pill);
   white-space: nowrap;
-  line-height: 1;
 }
 
 .word-search-grid {
