@@ -164,7 +164,6 @@ body {
 .grid-wrapper {
   grid-column: 1;
   grid-row: 1 / 5;
-  justify-self: center;
   min-width: 0;
 }
 
@@ -189,18 +188,20 @@ body {
   padding: 18px;
   border: 1.5px solid var(--border);
   box-shadow: var(--shadow-lg);
-  width: fit-content;
-  max-width: 100%;
+  width: 100%;
+  container-type: inline-size;
+  container-name: gridwrap;
 }
 
 .word-search-grid {
-  display: inline-grid;
+  display: grid;
   gap: var(--cell-gap);
+  width: 100%;
 }
 
 .grid-cell {
-  width: var(--cell-size);
-  height: var(--cell-size);
+  width: clamp(22px, calc((100cqi - 113px) / 12), 46px);
+  height: clamp(22px, calc((100cqi - 113px) / 12), 46px);
   background: var(--cell-bg);
   border: 1.5px solid var(--border-soft);
   border-radius: var(--radius-sm);
@@ -208,7 +209,7 @@ body {
   align-items: center;
   justify-content: center;
   font-family: "Baloo 2", cursive;
-  font-size: 1.05rem;
+  font-size: clamp(0.55rem, calc((100cqi - 113px) / 12 * 0.42), 1.05rem);
   font-weight: 700;
   color: var(--text);
   cursor: pointer;
@@ -634,26 +635,13 @@ body {
   }
 
   .grid-wrapper {
-    width: 100%;
-    display: flex;
-    justify-content: center;
     padding: 14px;
-    overflow: hidden;
   }
 
   .words-progress,
   #message,
   #levelCompleteMessage {
     width: 100%;
-  }
-
-  .grid-cell {
-    --_available: calc(100vw - 16px - 28px);
-    --_cell: calc((var(--_available) - var(--cell-gap) * 11) / 12);
-    width: var(--_cell);
-    height: var(--_cell);
-    font-size: calc(var(--_cell) * 0.42);
-    border-radius: 6px;
   }
 }
 
@@ -665,14 +653,6 @@ body {
   .grid-wrapper {
     padding: 10px;
   }
-
-  .grid-cell {
-    --_available: calc(100vw - 16px - 20px);
-    --_cell: calc((var(--_available) - var(--cell-gap) * 11) / 12);
-    width: var(--_cell);
-    height: var(--_cell);
-    font-size: calc(var(--_cell) * 0.42);
-  }
 }
 
 @media (max-width: 340px) {
@@ -682,13 +662,5 @@ body {
 
   .grid-wrapper {
     padding: 8px;
-  }
-
-  .grid-cell {
-    --_available: calc(100vw - 16px - 16px);
-    --_cell: calc((var(--_available) - var(--cell-gap) * 11) / 12);
-    width: var(--_cell);
-    height: var(--_cell);
-    font-size: calc(var(--_cell) * 0.42);
   }
 }
