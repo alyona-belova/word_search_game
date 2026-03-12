@@ -266,11 +266,11 @@ class WordSearchGame {
     const path = [[startRow, startCol]];
     const visited = new Set([`${startRow},${startCol}`]);
 
-    const dfs = (index) => {
+    const dfs = (index, prevDir) => {
       if (index === word.length) return true;
 
       const [r, c] = path[index - 1];
-      const neighbors = this.shuffledNeighbors(r, c);
+      const neighbors = this.biasedNeighbors(r, c, prevDir);
 
       for (const [nr, nc] of neighbors) {
         const key = `${nr},${nc}`;
@@ -280,7 +280,7 @@ class WordSearchGame {
         path.push([nr, nc]);
         visited.add(key);
 
-        if (dfs(index + 1)) return true;
+        if (dfs(index + 1, [nr - r, nc - c])) return true;
 
         path.pop();
         visited.delete(key);
@@ -288,30 +288,53 @@ class WordSearchGame {
       return false;
     };
 
-    if (dfs(1)) return path;
+    if (dfs(1, null)) return path;
     return null;
   }
 
-  shuffledNeighbors(r, c) {
+  biasedNeighbors(r, c, prevDir) {
     const dirs = [
       [-1, -1], [-1, 0], [-1, 1],
       [0, -1], [0, 1],
       [1, -1], [1, 0], [1, 1],
     ];
-    const result = [];
+
+    const candidates = [];
     for (const [dr, dc] of dirs) {
       const nr = r + dr;
       const nc = c + dc;
       if (nr >= 0 && nr < this.gridSize && nc >= 0 && nc < this.gridSize) {
-        result.push([nr, nc]);
+        candidates.push([nr, nc, dr, dc]);
       }
     }
 
-    for (let i = result.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [result[i], result[j]] = [result[j], result[i]];
+    if (!prevDir) {
+      for (let i = candidates.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+      }
+      return candidates.map(([nr, nc]) => [nr, nc]);
     }
-    return result;
+
+    const [pdr, pdc] = prevDir;
+
+    const dot = ([dr, dc]) => dr * pdr + dc * pdc;
+
+    const tier = ([, , dr, dc]) => {
+      const d = dot([dr, dc]);
+      if (d > 0.4) return 0;
+      if (d >= -0.1) return 1;
+      return 2;
+    };
+
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+    }
+
+    candidates.sort((a, b) => tier(a) - tier(b));
+
+    return candidates.map(([nr, nc]) => [nr, nc]);
   }
 
   commitSnakingPath(word, path) {
@@ -466,16 +489,15 @@ class WordSearchGame {
     const path = this.wordPaths.get(hintWord);
     if (!path || path.length === 0) return;
 
-    const [r, c] = path[0];
-    const key = `${r},${c}`;
-    this.hintCells.add(key);
+    const keys = path.map(([r, c]) => `${r},${c}`);
+    keys.forEach(key => this.hintCells.add(key));
 
     setTimeout(() => {
-      this.hintCells.delete(key);
+      keys.forEach(key => this.hintCells.delete(key));
       this.renderGrid();
     }, 3000);
 
-    this.showMessage(`Подсказка: найдена первая буква одного из слов!`, "level-complete");
+    this.showMessage(`Подсказка: одно из слов подсвечено на поле!`, "level-complete");
   }
 
   levelComplete() {
