@@ -88,7 +88,7 @@ body {
 }
 
 .header h1 {
-  font-family: "Baloo 2", cursive;
+  font-family: "Baloo 2", sans-serif;
   font-size: clamp(2rem, 6vw, 3.4rem);
   font-weight: 800;
   color: var(--text);
@@ -138,14 +138,14 @@ body {
   color: #fff;
   padding: 5px 20px;
   border-radius: var(--radius-pill);
-  font-family: "Baloo 2", cursive;
+  font-family: "Baloo 2", sans-serif;
   font-size: 0.76rem;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
 
 .level-progress {
-  font-family: "Baloo 2", cursive;
+  font-family: "Baloo 2", sans-serif;
   font-size: 0.76rem;
   color: var(--text-soft);
   font-weight: 600;
@@ -201,16 +201,16 @@ body {
 }
 
 .grid-cell {
-  width: clamp(22px, calc((100cqi - var(--grid-padding) * 2 - var(--cell-gap) * 11) / 12), 46px);
-  height: clamp(22px, calc((100cqi - var(--grid-padding) * 2 - var(--cell-gap) * 11) / 12), 46px);
+  width: 100%;
+  aspect-ratio: 1;
   background: var(--cell-bg);
   border: 1.5px solid var(--border-soft);
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: "Baloo 2", cursive;
-  font-size: clamp(0.55rem, calc((100cqi - 113px) / 12 * 0.42), 1.05rem);
+  font-family: "Baloo 2", sans-serif;
+  font-size: clamp(0.55rem, 3.5cqi, 1.05rem);
   font-weight: 700;
   color: var(--text);
   cursor: pointer;
@@ -309,7 +309,7 @@ body {
 }
 
 .progress-header h3 {
-  font-family: "Baloo 2", cursive;
+  font-family: "Baloo 2", sans-serif;
   font-size: 0.68rem;
   font-weight: 700;
   color: var(--text-muted);
@@ -322,7 +322,7 @@ body {
   color: #fff;
   padding: 3px 13px;
   border-radius: var(--radius-pill);
-  font-family: "Baloo 2", cursive;
+  font-family: "Baloo 2", sans-serif;
   font-weight: 800;
   font-size: 0.8rem;
 }
@@ -407,7 +407,7 @@ body {
   background: var(--gold-light);
   border: 1.5px solid var(--gold-muted);
   border-radius: var(--radius-pill);
-  font-family: "Baloo 2", cursive;
+  font-family: "Baloo 2", sans-serif;
   font-size: 0.76rem;
   font-weight: 700;
   color: var(--gold);
@@ -433,7 +433,7 @@ body {
   padding: 10px 18px;
   border-radius: var(--radius-md);
   display: none;
-  font-family: "Baloo 2", cursive;
+  font-family: "Baloo 2", sans-serif;
   font-size: 0.76rem;
   font-weight: 700;
   letter-spacing: 0.07em;
@@ -543,7 +543,7 @@ body {
 }
 
 .complete-title {
-  font-family: "Baloo 2", cursive;
+  font-family: "Baloo 2", sans-serif;
   font-size: 2.4rem;
   font-weight: 800;
   color: var(--text);
@@ -557,7 +557,7 @@ body {
   border: none;
   padding: 14px 32px;
   border-radius: var(--radius-pill);
-  font-family: "Baloo 2", cursive;
+  font-family: "Baloo 2", sans-serif;
   font-size: 0.92rem;
   font-weight: 700;
   cursor: pointer;
