@@ -381,6 +381,12 @@ class WordSearchGame {
 
   startSelection(row, col) {
     if (this.isCellFound(row, col)) return;
+
+    if (this.hintCells.size > 0) {
+      this.hintCells.clear();
+      this.renderGrid();
+    }
+
     this.isSelecting = true;
     this.selectedCells = [];
     this.addToSelection(row, col);
@@ -491,11 +497,6 @@ class WordSearchGame {
 
     const keys = path.map(([r, c]) => `${r},${c}`);
     keys.forEach(key => this.hintCells.add(key));
-
-    setTimeout(() => {
-      keys.forEach(key => this.hintCells.delete(key));
-      this.renderGrid();
-    }, 3000);
 
     this.showMessage(`Подсказка: одно из слов подсвечено на поле!`, "level-complete");
   }
