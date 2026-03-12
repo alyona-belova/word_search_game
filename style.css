@@ -55,6 +55,7 @@
 
   --cell-gap: 7px;
   --cell-size: 44px;
+  --grid-padding: 18px;
 }
 
 body {
@@ -185,7 +186,7 @@ body {
 .grid-wrapper {
   background: var(--surface);
   border-radius: var(--radius);
-  padding: 18px;
+  padding: var(--grid-padding);
   border: 1.5px solid var(--border);
   box-shadow: var(--shadow-lg);
   width: 100%;
@@ -200,8 +201,8 @@ body {
 }
 
 .grid-cell {
-  width: clamp(22px, calc((100cqi - 113px) / 12), 46px);
-  height: clamp(22px, calc((100cqi - 113px) / 12), 46px);
+  width: clamp(22px, calc((100cqi - var(--grid-padding) * 2 - var(--cell-gap) * 11) / 12), 46px);
+  height: clamp(22px, calc((100cqi - var(--grid-padding) * 2 - var(--cell-gap) * 11) / 12), 46px);
   background: var(--cell-bg);
   border: 1.5px solid var(--border-soft);
   border-radius: var(--radius-sm);
@@ -635,7 +636,7 @@ body {
   }
 
   .grid-wrapper {
-    padding: 14px;
+    --grid-padding: 14px;
   }
 
   .words-progress,
@@ -651,7 +652,7 @@ body {
   }
 
   .grid-wrapper {
-    padding: 10px;
+    --grid-padding: 10px;
   }
 }
 
@@ -661,6 +662,6 @@ body {
   }
 
   .grid-wrapper {
-    padding: 8px;
+    --grid-padding: 8px;
   }
 }
