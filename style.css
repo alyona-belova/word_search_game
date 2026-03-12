@@ -8,26 +8,33 @@
 
 :root {
   --grid-size: 12;
+
   --bg: #f5f0e8;
   --bg-dots: #e6dfd2;
   --surface: #fdfaf6;
   --border: #d9cfc0;
   --border-soft: #ece5d8;
+
   --terra: #c1614a;
   --terra-light: #f2ddd8;
   --terra-muted: #e8c4bc;
+
   --sage: #5a7f6a;
   --sage-light: #d6e8de;
   --sage-muted: #b8d4c4;
+
   --gold: #b8892a;
   --gold-light: #f5e8c8;
   --gold-muted: #e0cfa0;
+
   --sky: #4a86a8;
   --sky-light: #d4e8f5;
   --sky-muted: #b0d0e8;
+
   --text: #2e2218;
   --text-soft: #6b5240;
   --text-muted: #a08870;
+
   --cell-bg: #fdfaf6;
   --cell-hover: #f5ede4;
   --cell-selected: #c8aef0;
@@ -53,7 +60,9 @@
 body {
   font-family: "Nunito", sans-serif;
   background-color: var(--bg);
-  background-image: radial-gradient(circle, var(--bg-dots) 1.5px, transparent 1.5px);
+  background-image: radial-gradient(circle,
+      var(--bg-dots) 1.5px,
+      transparent 1.5px);
   background-size: 24px 24px;
   min-height: 100vh;
   display: flex;
@@ -207,8 +216,8 @@ body {
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
   touch-action: none;
-  transition: background 0.1s ease, border-color 0.1s ease,
-    transform 0.1s ease, box-shadow 0.1s ease;
+  transition: background 0.1s ease, border-color 0.1s ease, transform 0.1s ease,
+    box-shadow 0.1s ease;
   box-shadow: var(--shadow-sm);
   position: relative;
 }
@@ -629,6 +638,7 @@ body {
     display: flex;
     justify-content: center;
     padding: 14px;
+    overflow: hidden;
   }
 
   .words-progress,
@@ -636,21 +646,9 @@ body {
   #levelCompleteMessage {
     width: 100%;
   }
-}
-
-@media (max-width: 520px) {
-  :root {
-    --cell-gap: 5px;
-  }
-
-  .grid-wrapper {
-    padding: 12px;
-    width: 100%;
-    overflow: hidden;
-  }
 
   .grid-cell {
-    --_available: calc(100vw - 24px - 24px);
+    --_available: calc(100vw - 16px - 28px);
     --_cell: calc((var(--_available) - var(--cell-gap) * 11) / 12);
     width: var(--_cell);
     height: var(--_cell);
@@ -659,7 +657,25 @@ body {
   }
 }
 
-@media (max-width: 360px) {
+@media (max-width: 400px) {
+  :root {
+    --cell-gap: 5px;
+  }
+
+  .grid-wrapper {
+    padding: 10px;
+  }
+
+  .grid-cell {
+    --_available: calc(100vw - 16px - 20px);
+    --_cell: calc((var(--_available) - var(--cell-gap) * 11) / 12);
+    width: var(--_cell);
+    height: var(--_cell);
+    font-size: calc(var(--_cell) * 0.42);
+  }
+}
+
+@media (max-width: 340px) {
   :root {
     --cell-gap: 4px;
   }
