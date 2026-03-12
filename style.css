@@ -294,7 +294,7 @@ body {
   background: var(--main-light-color);
   border-radius: var(--radius-pill);
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ink-color);
   letter-spacing: 0.04em;
   text-transform: uppercase;
