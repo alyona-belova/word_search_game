@@ -241,6 +241,11 @@ body {
   box-shadow: 0 3px 10px rgba(46, 34, 24, 0.1);
 }
 
+.grid-cell.theme-letter {
+  background: var(--terra-light);
+  border-color: var(--terra-muted);
+}
+
 .grid-cell.selected {
   background: var(--cell-selected);
   border-color: var(--cell-sel-border);
@@ -257,11 +262,6 @@ body {
   cursor: default;
   transform: none;
   box-shadow: none;
-}
-
-.grid-cell.theme-letter {
-  background: var(--terra-light);
-  border-color: var(--terra-muted);
 }
 
 .grid-cell.hint {
@@ -544,35 +544,17 @@ body {
 
 .level-complete-card::before {
   content: "";
-  display: block;
-  height: 5px;
-  background: var(--terra);
   position: absolute;
   top: 0;
   left: 0;
-  width: 33.33%;
-}
-
-.level-complete-card::after {
-  content: "";
-  display: block;
-  height: 5px;
-  background: var(--sage);
-  position: absolute;
-  top: 0;
-  left: 33.33%;
-  width: 33.33%;
-}
-
-.level-complete-card>.confetti::before {
-  content: "";
-  display: block;
-  height: 5px;
-  background: var(--gold);
-  position: absolute;
-  top: 0;
-  left: 66.66%;
   right: 0;
+  height: 5px;
+  background: linear-gradient(
+    to right,
+    var(--terra) 33.33%,
+    var(--sage) 33.33% 66.66%,
+    var(--gold) 66.66%
+  );
 }
 
 @keyframes cardPop {

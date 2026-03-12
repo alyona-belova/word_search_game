@@ -336,9 +336,10 @@ class WordSearchGame {
     const dot = ([dr, dc]) => dr * pdr + dc * pdc;
     const tier = ([, , dr, dc]) => {
       const d = dot([dr, dc]);
-      if (d > 0.4) return 0;
-      if (d >= -0.1) return 1;
-      return 2;
+      if (d > 0.7) return 0;
+      if (d > 0.1) return 1;
+      if (d > -0.4) return 2;
+      return 3;
     };
 
     for (let i = candidates.length - 1; i > 0; i--) {
@@ -462,16 +463,8 @@ class WordSearchGame {
 
     const selectedWord = this.selectedCells.map(([r, c]) => this.grid[r][c]).join("");
     const reversedWord = selectedWord.split("").reverse().join("");
-    const n = this.selectedCells.length;
 
-    const foundWord = this.words.find(word => {
-      if (this.foundWords.has(word)) return false;
-      const path = this.wordPaths.get(word);
-      if (!path || path.length !== n) return false;
-      const fwd = path.every(([r, c], i) => this.selectedCells[i][0] === r && this.selectedCells[i][1] === c);
-      if (fwd) return true;
-      return path.every(([r, c], i) => this.selectedCells[n - 1 - i][0] === r && this.selectedCells[n - 1 - i][1] === c);
-    });
+    const foundWord = this.words.find(word => !this.foundWords.has(word) && (word === selectedWord || word === reversedWord));
 
     if (foundWord) {
       this.foundWords.add(foundWord);
@@ -621,20 +614,33 @@ class WordSearchGame {
       const path = this.wordPaths.get(word);
       if (!path || path.length < 2) continue;
 
-      const points = [];
+      const pts = [];
       for (const [r, c] of path) {
         const cellEl = cells[r * this.gridSize + c];
         if (!cellEl) continue;
         const rect = cellEl.getBoundingClientRect();
-        const cx = rect.left - wrapperRect.left + rect.width / 2;
-        const cy = rect.top - wrapperRect.top + rect.height / 2;
-        points.push(`${cx},${cy}`);
+        pts.push({
+          x: rect.left - wrapperRect.left + rect.width / 2,
+          y: rect.top - wrapperRect.top + rect.height / 2,
+        });
       }
 
-      if (points.length < 2) continue;
+      if (pts.length < 2) continue;
+
+      const waypoints = [pts[0]];
+      for (let i = 1; i < pts.length - 1; i++) {
+        const prev = waypoints[waypoints.length - 1];
+        const curr = pts[i];
+        const next = pts[i + 1];
+        const cross = Math.abs(
+          (curr.x - prev.x) * (next.y - prev.y) - (curr.y - prev.y) * (next.x - prev.x)
+        );
+        if (cross > 1) waypoints.push(curr);
+      }
+      waypoints.push(pts[pts.length - 1]);
 
       const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-      polyline.setAttribute("points", points.join(" "));
+      polyline.setAttribute("points", waypoints.map(p => `${p.x},${p.y}`).join(" "));
       polyline.setAttribute("stroke", LINE_COLORS[colorIdx % LINE_COLORS.length]);
       polyline.setAttribute("stroke-width", strokeWidth);
       polyline.setAttribute("stroke-linecap", "round");
@@ -669,6 +675,10 @@ class WordSearchGame {
 
   renderFoundWords() {
     const container = document.getElementById("foundWords");
+    if (this.abGroup === "B") {
+      container.innerHTML = "";
+      return;
+    }
     const foundArray = Array.from(this.foundWords);
     if (foundArray.length === 0) {
       container.innerHTML = '<div class="empty-words">Пока ничего не найдено</div>';
