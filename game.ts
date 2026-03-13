@@ -245,9 +245,9 @@ class WordSearchGame {
     const gridEl = document.getElementById("grid")!;
     gridEl.addEventListener("pointermove", (e) => {
       if (!this.isSelecting) return;
-      const cell = (e.target as Element)?.closest(
-        ".grid-cell",
-      ) as HTMLElement | null;
+      const cell = document
+        .elementFromPoint(e.clientX, e.clientY)
+        ?.closest(".grid-cell") as HTMLElement | null;
       if (!cell) return;
       this.addToSelection(
         parseInt(cell.dataset.row!),
