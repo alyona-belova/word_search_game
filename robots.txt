@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+ 
+Sitemap: https://alyona-belova.github.io/word_search_game/sitemap.xml
