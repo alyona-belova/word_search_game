@@ -5,10 +5,10 @@
 
 from tapi_yandex_metrika import YandexMetrikaLogsapi
 from datetime import date, timedelta
-import csv, sys
+import csv, sys, time, requests
 
-TOKEN   = "token"
-COUNTER = "counter"
+TOKEN   = ""
+COUNTER = ""
 
 DATE2 = date.today() - timedelta(days=1)
 DATE1 = DATE2 - timedelta(days=30)
@@ -46,15 +46,43 @@ report = client.create().post(params=PARAMS)
 request_id = report["log_request"]["request_id"]
 print(f"Request ID: {request_id}")
 
-out = f"reports/metrica-sessions-{DATE1}-{DATE2}.tsv"
-rows = list(client.download(requestId=request_id, partNumber=0).get().iter_dicts())
+while True:
+    info = client.info(requestId=request_id).get()
+    status = info["log_request"]["status"]
+    print(f"Status: {status}")
+    if status == "processed":
+        break
+    if status in ("cleaned_by_user", "processing_failed"):
+        print("Request failed.")
+        sys.exit(1)
+    time.sleep(10)
 
-if not rows:
+parts = info["log_request"].get("parts", [])
+print(f"Downloading {len(parts)} part(s)…")
+
+lines_all = []
+for part in parts:
+    r = requests.get(
+        f"https://api-metrika.yandex.net/management/v1/counter/{COUNTER}"
+        f"/logrequest/{request_id}/part/{part['part_number']}/download",
+        headers={"Authorization": f"OAuth {TOKEN}"},
+    )
+    r.raise_for_status()
+    lines = [l for l in r.text.splitlines() if l]
+    if not lines_all:
+        lines_all.append(lines[0])  # header once
+    lines_all.extend(lines[1:])
+
+if len(lines_all) <= 1:
     print("No rows returned.")
     sys.exit(0)
 
+header = lines_all[0].split("\t")
+rows = [dict(zip(header, l.split("\t"))) for l in lines_all[1:]]
+
+out = f"reports/metrica-sessions-{DATE1}-{DATE2}.tsv"
 with open(out, "w", newline="", encoding="utf-8") as f:
-    writer = csv.DictWriter(f, fieldnames=rows[0].keys(), delimiter="\t")
+    writer = csv.DictWriter(f, fieldnames=header, delimiter="\t")
     writer.writeheader()
     writer.writerows(rows)
 

@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // usage: node fetch-logs.js
-// columns: visitID, date, clientID, isNewUser, visitDuration, goalsID, params
-// params: { ab_group, is_returning, level, level_status, hints_used, drop_off_pct }
+// columns: visitID, date, clientID, isNewUser, visitDuration, goalsID, parsedParamsKey1, parsedParamsKey2
+// parsedParamsKey1/2: parallel arrays — zip to get { ab_group, level_status, hints_used, drop_off_pct, … }
 
 import https from "https";
 import fs from "fs";
 
-const TOKEN = "token";
-const COUNTER = "counter";
+const TOKEN = "";
+const COUNTER = "";
 
 const today = new Date();
 const thirtyAgo = new Date(+today - 30 * 24 * 60 * 60 * 1000);
@@ -19,9 +19,11 @@ const FIELDS = [
   "ym:s:visitID",
   "ym:s:date",
   "ym:s:clientID",
-  "ym:s:isNewUser",
-  "ym:s:visitDuration",
-  "ym:s:params",
+  "ym:s:isNewUser",         // revisit rate
+  "ym:s:visitDuration",     // time on site
+  "ym:s:goalsID",           // which goals fired per session
+  "ym:s:parsedParamsKey1",  // game param keys   e.g. ab_group, level_status
+  "ym:s:parsedParamsKey2",  // game param values e.g. A, completed
 ].join(",");
 
 function apiRequest(method, path, body = null) {
@@ -99,7 +101,7 @@ async function main() {
   for (const part of parts) {
     const res = await apiRequest(
       "GET",
-      `/logs/v1/counter/${COUNTER}/logrequest/${requestId}/part/${part.part_number}/download`,
+      `/management/v1/counter/${COUNTER}/logrequest/${requestId}/part/${part.part_number}/download`,
     );
     const text =
       typeof res.body === "string" ? res.body : JSON.stringify(res.body);
