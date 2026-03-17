@@ -177,7 +177,12 @@ class WordSearchGame {
 
     window.addEventListener("beforeunload", () => {
       if (this.foundWords.size < this.words.length) {
-        trackDropOff(this.currentLevel, this.foundWords.size, this.words.length);
+        trackDropOff(
+          this.currentLevel,
+          this.foundWords.size,
+          this.words.length,
+          this.hintsUsed,
+        );
       }
     });
   }
@@ -534,7 +539,7 @@ class WordSearchGame {
   }
 
   fillEmptyCells(): void {
-    const fillAlphabet = RUSSIAN_ALPHABET.filter(l => l !== this.themeLetter);
+    const fillAlphabet = RUSSIAN_ALPHABET.filter((l) => l !== this.themeLetter);
     for (let i = 0; i < this.gridSize; i++) {
       for (let j = 0; j < this.gridSize; j++) {
         if (this.grid[i][j] === null) {
@@ -675,7 +680,11 @@ class WordSearchGame {
       "Подсказка: одно из слов подсвечено на поле!",
       "level-complete",
     );
-    trackHintReceived(this.currentLevel, this.foundWords.size, this.words.length);
+    trackHintReceived(
+      this.currentLevel,
+      this.foundWords.size,
+      this.words.length,
+    );
   }
 
   levelComplete(): void {
