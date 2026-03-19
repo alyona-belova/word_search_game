@@ -193,6 +193,23 @@ class WordSearchGame {
     this.currentLevel = 1;
     this.loadLevel();
   }
+  pathsConflict(path, currentWord) {
+    for (const [r, c] of path) {
+      const key = `${r},${c}`;
+      const wordsHere = this.placements.get(key);
+      if (!wordsHere) continue;
+      for (const w of wordsHere) {
+        if (
+          w !== currentWord &&
+          !this.foundWords.has(w) &&
+          this.words.includes(w)
+        ) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
   setupEventListeners() {
     document.addEventListener("pointerup", () => this.stopSelection());
     document.addEventListener("pointercancel", () => this.stopSelection());
@@ -510,6 +527,11 @@ class WordSearchGame {
         (word === selectedWord || word === reversedWord),
     );
     if (foundWord) {
+      const userPath = [...this.selectedCells];
+      const hasConflict = this.pathsConflict(userPath, foundWord);
+      if (!hasConflict) {
+        this.wordPaths.set(foundWord, userPath);
+      }
       this.foundWords.add(foundWord);
       this.saveProgress();
       this.showMessage(`Найдено: ${foundWord}!`, "success");

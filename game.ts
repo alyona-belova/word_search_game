@@ -250,6 +250,24 @@ class WordSearchGame {
     this.loadLevel();
   }
 
+  pathsConflict(path: Cell[], currentWord: string): boolean {
+    for (const [r, c] of path) {
+      const key = `${r},${c}`;
+      const wordsHere = this.placements.get(key);
+      if (!wordsHere) continue;
+      for (const w of wordsHere) {
+        if (
+          w !== currentWord &&
+          !this.foundWords.has(w) &&
+          this.words.includes(w)
+        ) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   setupEventListeners(): void {
     document.addEventListener("pointerup", () => this.stopSelection());
     document.addEventListener("pointercancel", () => this.stopSelection());
@@ -633,6 +651,11 @@ class WordSearchGame {
     );
 
     if (foundWord) {
+      const userPath = [...this.selectedCells];
+      const hasConflict = this.pathsConflict(userPath, foundWord);
+      if (!hasConflict) {
+        this.wordPaths.set(foundWord, userPath);
+      }
       this.foundWords.add(foundWord);
       this.saveProgress();
       this.showMessage(`Найдено: ${foundWord}!`, "success");
