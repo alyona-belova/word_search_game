@@ -122,6 +122,9 @@ class WordSearchGame {
         if (!loaded) {
             this.loadLevel();
         }
+        else {
+            resetLevelTimer();
+        }
         this.setupEventListeners();
         setupTutorial();
         trackSessionStart(this.abGroup);

@@ -95,6 +95,8 @@ def unroll_session(row):
             attempt = dict(base)
             for field in (SESSION_FIELDS | LEVEL_FIELDS):
                 attempt[field] = ctx.get(field, "")
+            ir = str(attempt.get("is_returning", "0")).lower()
+            attempt["is_returning"] = "1" if ir in ("1", "true") else "0"
             # Ensure level_status is set from current event (not stale ctx)
             attempt["level_status"] = v
             attempts.append(attempt)

@@ -38,6 +38,9 @@ function trackSessionStart(abGroup) {
         track("session_end", { duration_sec: duration });
     });
 }
+function resetLevelTimer() {
+    _levelStart = Date.now();
+}
 function trackLevelStart(level, themeLetter, levelSeq) {
     _levelStart = Date.now();
     track("level_started", {

@@ -174,6 +174,8 @@ class WordSearchGame {
     const loaded = this.loadProgress();
     if (!loaded) {
       this.loadLevel();
+    } else {
+      resetLevelTimer();
     }
     this.setupEventListeners();
     setupTutorial();

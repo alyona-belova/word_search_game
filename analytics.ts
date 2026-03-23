@@ -49,6 +49,10 @@ function trackSessionStart(abGroup: string): void {
   });
 }
 
+function resetLevelTimer(): void {
+  _levelStart = Date.now();
+}
+
 function trackLevelStart(
   level: number,
   themeLetter: string,
