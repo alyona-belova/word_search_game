@@ -1,20 +1,13 @@
 #!/usr/bin/env python3
 """
-Comparative ML analysis — word-search game user behaviour.
-
 Block 1 — Regression: predict levels_completed_per_session
-          Features: session-start context only (no mid-game signals)
+          Features: session-start context only
           Models:   Linear Regression, Decision Tree, Random Forest, SVR, XGBoost
 
 Block 2 — Classification: predict user retention (will_return)
           Features: aggregated first-session behaviour per user
           Models:   Logistic Regression, Decision Tree, Random Forest, SVM, XGBoost
-
-Usage:
-    python3 models.py                        # auto-picks latest TSV in reports/
-    python3 models.py reports/my_file.tsv   # explicit file
 """
-
 import sys, warnings
 from pathlib import Path
 
@@ -43,7 +36,6 @@ try:
     HAS_XGBOOST = True
 except ImportError:
     HAS_XGBOOST = False
-    print("⚠  xgboost not found — XGBoost will be skipped. pip install xgboost")
 
 warnings.filterwarnings("ignore")
 RANDOM_STATE = 42
@@ -52,7 +44,6 @@ OUTPUT_DIR = Path("reports")
 
 
 # Data loading
-
 def find_latest_tsv() -> Path:
     tsvs = sorted(OUTPUT_DIR.glob("metrica-sessions-*.tsv"))
     if not tsvs:
@@ -257,7 +248,7 @@ def run_block1(df: pd.DataFrame):
     )
 
     if len(sessions) < 20:
-        print("  ⚠  Too few sessions — collect more data.")
+        print("Too few sessions — collect more data.")
 
     X, y, feature_cols = engineer_session(sessions)
     print(f"  Features ({len(feature_cols)}): {feature_cols}")
@@ -532,13 +523,13 @@ def run_block2(df: pd.DataFrame):
     print(f"  Users: {total},  retained: {ret},  not retained: {total - ret}")
 
     if total < 20:
-        print("  ⚠  Too few users — collect more sessions.")
+        print("Too few users — collect more sessions.")
         return
     if ret == 0 or ret == total:
-        print("  ⚠  Only one class present — need both retained and non-retained users.")
+        print("Only one class present — need both retained and non-retained users.")
         return
     if min(ret, total - ret) < 5:
-        print("  ⚠  Very few samples in minority class — results will be unreliable.")
+        print("Very few samples in minority class — results will be unreliable.")
 
     X, y, feature_cols = engineer_retention(users)
     print(f"  Features ({len(feature_cols)}): {feature_cols}")
