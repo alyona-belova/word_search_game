@@ -728,7 +728,7 @@ class WordSearchGame {
         this.renderFoundWords();
         this.renderWordList();
         this.updateProgress();
-        this.drawLines();
+        requestAnimationFrame(() => requestAnimationFrame(() => this.drawLines()));
     }
     renderWordList() {
         const section = document.getElementById("wordListSection");
