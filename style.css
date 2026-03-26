@@ -657,7 +657,7 @@ body {
 
 @media (max-width: 740px) {
   body {
-    padding: 10px 8px 48px;
+    padding: 10px 4px 48px;
   }
 
   .header {
@@ -676,12 +676,12 @@ body {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    padding: 16px 12px 0;
+    padding: 16px 4px 0;
     gap: 14px;
   }
 
   .grid-wrapper {
-    --grid-padding: 14px;
+    --grid-padding: 10px;
   }
 
   .words-progress,
