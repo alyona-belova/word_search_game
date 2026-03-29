@@ -7,8 +7,10 @@ Block 1 — Regression: predict levels_completed_per_session
 Block 2 — Classification: predict user retention (will_return)
           Features: aggregated first-session behaviour per user
           Models:   Logistic Regression, Decision Tree, Random Forest, SVM, XGBoost
+
+usage: python3 models.py --from 2026-03-23
 """
-import sys, warnings
+import warnings, argparse
 from pathlib import Path
 
 import numpy as np
@@ -21,13 +23,12 @@ from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.svm import SVC, SVR
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import StratifiedKFold, KFold, cross_validate
 from sklearn.metrics import (
     make_scorer,
     accuracy_score, precision_score, recall_score, f1_score, roc_auc_score,
-    RocCurveDisplay,
-    mean_absolute_error, mean_squared_error, r2_score,
+    RocCurveDisplay
 )
 from sklearn.pipeline import Pipeline
 
@@ -41,21 +42,54 @@ warnings.filterwarnings("ignore")
 RANDOM_STATE = 42
 N_SPLITS = 5
 OUTPUT_DIR = Path("reports")
+RARE_CAT_THRESHOLD = 5
+LOG_COLS = {"visit_count", "session_duration_first", "avg_time_first_word"}
+
+
+def cap_rare(series: pd.Series) -> pd.Series:
+    """Replace categories appearing fewer than RARE_CAT_THRESHOLD times with 'other'."""
+    rare = series.value_counts()[lambda c: c < RARE_CAT_THRESHOLD].index
+    return series.where(~series.isin(rare), other="other")
+
+
+def freq_encode(series: pd.Series) -> pd.Series:
+    """Replace each category with its frequency count."""
+    return series.map(series.value_counts()).fillna(0).astype(int)
+
+
+def winsorize(series: pd.Series, upper: float = 0.95) -> pd.Series:
+    """Cap values at the given upper quantile."""
+    cap = series.quantile(upper)
+    return series.clip(upper=cap) if cap > 0 else series
 
 
 # Data loading
-def find_latest_tsv() -> Path:
-    tsvs = sorted(OUTPUT_DIR.glob("metrica-sessions-*.tsv"))
-    if not tsvs:
+def find_latest_tsvs() -> list:
+    ru_tsvs  = sorted(OUTPUT_DIR.glob("metrica-sessions-[0-9]*.tsv"))
+    eng_tsvs = sorted(OUTPUT_DIR.glob("metrica-sessions-eng-*.tsv"))
+    paths = []
+    if ru_tsvs:
+        paths.append(ru_tsvs[-1])
+    if eng_tsvs:
+        paths.append(eng_tsvs[-1])
+    if not paths:
         raise FileNotFoundError(
             "No metrica-sessions-*.tsv in reports/. Run fetch_logs.py first."
         )
-    return tsvs[-1]
+    return paths
 
 
-def load_raw(path: Path) -> pd.DataFrame:
-    df = pd.read_csv(path, sep="\t", dtype=str)
-    print(f"Loaded {len(df)} attempt rows from {path.name}")
+def load_raw(paths) -> pd.DataFrame:
+    if isinstance(paths, Path):
+        paths = [paths]
+    frames = []
+    for p in paths:
+        chunk = pd.read_csv(p, sep="\t", dtype=str)
+        print(f"Loaded {len(chunk)} attempt rows from {p.name}")
+        frames.append(chunk)
+    df = pd.concat(frames, ignore_index=True) if len(frames) > 1 else frames[0]
+    if len(frames) > 1:
+        print(f"Combined total: {len(df)} rows")
     return df
 
 
@@ -79,6 +113,10 @@ SESSION_CAT = [
     "device_category", # desktop / mobile / tablet
     "utm_source",      # traffic source
     "utm_medium",      # traffic medium
+    "region",          # geographic region
+    "browser",         # browser used
+    "os",              # operating system
+    "theme_letter",    # puzzle theme at session start
 ]
 
 
@@ -108,6 +146,9 @@ def engineer_session(sessions: pd.DataFrame):
 
     for col in SESSION_NUM:
         d[col] = pd.to_numeric(d.get(col, 0), errors="coerce").fillna(0)
+        d[col] = winsorize(d[col])
+        if col in LOG_COLS:
+            d[col] = np.log1p(d[col])
 
     for col in ("is_new_user", "is_returning"):
         if col in d.columns:
@@ -121,9 +162,7 @@ def engineer_session(sessions: pd.DataFrame):
         if col in ("is_new_user", "is_returning"):
             continue
         if col in d.columns:
-            d[col] = LabelEncoder().fit_transform(
-                d[col].fillna("unknown").astype(str)
-            )
+            d[col] = freq_encode(cap_rare(d[col].fillna("unknown").astype(str)))
         else:
             d[col] = 0
 
@@ -288,6 +327,10 @@ RET_NUM = [
 RET_CAT = [
     "ab_group",        # A / B interface variant
     "device_category", # desktop / mobile / tablet
+    "region",          # geographic region
+    "browser",         # browser used
+    "os",              # operating system
+    "theme_letter_first", # most common puzzle theme in first session
 ]
 
 
@@ -330,6 +373,15 @@ def build_retention_dataset(df: pd.DataFrame) -> pd.DataFrame:
                                      if "ab_group" in g.columns else "unknown",
             "device_category":       g["device_category"].iloc[0]
                                      if "device_category" in g.columns else "unknown",
+            "region":                g["region"].iloc[0]
+                                     if "region" in g.columns else "unknown",
+            "browser":               g["browser"].iloc[0]
+                                     if "browser" in g.columns else "unknown",
+            "os":                    g["os"].iloc[0]
+                                     if "os" in g.columns else "unknown",
+            "theme_letter_first":    (lambda m: m.iloc[0] if len(m) else "unknown")(
+                                         g["theme_letter"].dropna().mode()
+                                     ) if "theme_letter" in g.columns else "unknown",
         })
 
     users = (
@@ -346,12 +398,13 @@ def engineer_retention(users: pd.DataFrame):
 
     for col in RET_NUM:
         d[col] = pd.to_numeric(d.get(col, 0), errors="coerce").fillna(0)
+        d[col] = winsorize(d[col])
+        if col in LOG_COLS:
+            d[col] = np.log1p(d[col])
 
     for col in RET_CAT:
         if col in d.columns:
-            d[col] = LabelEncoder().fit_transform(
-                d[col].fillna("unknown").astype(str)
-            )
+            d[col] = freq_encode(cap_rare(d[col].fillna("unknown").astype(str)))
         else:
             d[col] = 0
 
@@ -359,27 +412,36 @@ def engineer_retention(users: pd.DataFrame):
     return d[feature_cols].values, d["retained"].values, feature_cols
 
 
-def build_classifiers() -> dict:
+def build_classifiers(scale_pos_weight: float = 1.0) -> dict:
     models = {
         "Logistic Regression": Pipeline([
             ("scaler", StandardScaler()),
-            ("clf",    LogisticRegression(max_iter=1000, random_state=RANDOM_STATE)),
+            ("clf",    LogisticRegression(
+                max_iter=1000, random_state=RANDOM_STATE,
+                class_weight="balanced",
+            )),
         ]),
         "Decision Tree": DecisionTreeClassifier(
-            max_depth=5, random_state=RANDOM_STATE
+            max_depth=5, random_state=RANDOM_STATE,
+            class_weight="balanced",
         ),
         "Random Forest": RandomForestClassifier(
-            n_estimators=200, max_depth=6, random_state=RANDOM_STATE
+            n_estimators=200, max_depth=6, random_state=RANDOM_STATE,
+            class_weight="balanced",
         ),
         "SVM": Pipeline([
             ("scaler", StandardScaler()),
-            ("clf",    SVC(kernel="rbf", probability=True, random_state=RANDOM_STATE)),
+            ("clf",    SVC(
+                kernel="rbf", probability=True, random_state=RANDOM_STATE,
+                class_weight="balanced",
+            )),
         ]),
     }
     if HAS_XGBOOST:
         models["XGBoost"] = XGBClassifier(
             n_estimators=200, max_depth=4, learning_rate=0.1,
             random_state=RANDOM_STATE, eval_metric="logloss", verbosity=0,
+            scale_pos_weight=scale_pos_weight,
         )
     return models
 
@@ -534,7 +596,8 @@ def run_block2(df: pd.DataFrame):
     X, y, feature_cols = engineer_retention(users)
     print(f"  Features ({len(feature_cols)}): {feature_cols}")
 
-    models = build_classifiers()
+    spw = (total - ret) / ret if ret > 0 else 1.0
+    models = build_classifiers(scale_pos_weight=spw)
     results = evaluate_classifiers(models, X, y)
 
     print("\n" + "=" * 65)
@@ -556,8 +619,21 @@ def run_block2(df: pd.DataFrame):
 # Main
 
 def main():
-    path = Path(sys.argv[1]) if len(sys.argv) > 1 else find_latest_tsv()
-    df = load_raw(path)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("file", nargs="?", help="TSV file to load")
+    parser.add_argument("--from", dest="from_date", metavar="YYYY-MM-DD",
+                        help="Only include rows on or after this date")
+    args = parser.parse_args()
+
+    paths = [Path(args.file)] if args.file else find_latest_tsvs()
+    df = load_raw(paths)
+
+    if args.from_date:
+        df["date"] = pd.to_datetime(df["date"], errors="coerce")
+        cutoff = pd.Timestamp(args.from_date)
+        before = len(df)
+        df = df[df["date"] >= cutoff].reset_index(drop=True)
+        print(f"Filtered to {len(df)} rows (from {args.from_date}, dropped {before - len(df)})")
 
     run_block1(df)
     run_block2(df)
