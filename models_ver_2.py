@@ -18,7 +18,7 @@ Actionable: trigger a hint prompt before the user quits.
 Block 4 — D7 Retention Classifier
 Binary classification per user: did they return within 7 days?
 Uses first-session level-sequence features (improvement trajectory,
-last-level completion, engagement depth).
+last-level completion, engagement depth) that the old block ignored.
 
 All blocks:
 - Hyperparameter tuning via RandomizedSearchCV (n_iter scales with grid size)
@@ -27,33 +27,33 @@ All blocks:
 - Calibration plots + learning curves for classifiers
 - Pairwise Wilcoxon significance tests between models
 - Best model persisted via joblib
-- Business-cost threshold optimisation for Block 4 (–cost-fp / –cost-fn)
+- Business-cost threshold optimisation for Block 4 (--cost-fp / --cost-fn)
 - SMOTE when imbalanced-learn is available
 - XGBoost → LightGBM → CatBoost fallback chain
 
 usage:
-python3 models.py [FILE] [–from YYYY-MM-DD] [–tune]
-[–cost-fp FLOAT] [–cost-fn FLOAT]
-[–blocks 1 2 3 4]
+python3 models.py [FILE] [--from YYYY-MM-DD] [--tune]
+                  [--cost-fp FLOAT] [--cost-fn FLOAT]
+                  [--blocks 1 2 3 4]
 """
 from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline
+from sklearn.calibration import CalibrationDisplay
 from sklearn.metrics import (
     make_scorer,
     accuracy_score, precision_score, recall_score, f1_score, roc_auc_score,
     RocCurveDisplay, brier_score_loss,
-    silhouette_score, confusion_matrix, ConfusionMatrixDisplay,
+    silhouette_score, confusion_matrix
 )
-from sklearn.calibration import CalibrationDisplay
 from sklearn.model_selection import (
-    StratifiedKFold, KFold, cross_validate,
+    StratifiedKFold, cross_validate,
     RandomizedSearchCV, learning_curve,
 )
 from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.linear_model import LogisticRegression, Ridge, ElasticNet
+from sklearn.linear_model import LogisticRegression
 from scipy.stats import wilcoxon
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -115,7 +115,7 @@ warnings.filterwarnings("ignore")
 # logging
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(message)s",
+    format="%(asctime)s %(levelname)-8s %(message)s",
     datefmt="%H:%M:%S",
 )
 log = logging.getLogger(__name__)
@@ -130,8 +130,8 @@ DEFAULT_COST_FP = 1.0  # wasted marketing spend
 DEFAULT_COST_FN = 3.0  # missed returner revenue
 D7_WINDOW = 7  # days for retention label
 
-# shared utilities
 
+# Shared utilities
 
 def cap_rare(s: pd.Series, threshold: int = RARE_THRESHOLD) -> pd.Series:
     rare = s.value_counts()[lambda c: c < threshold].index
@@ -169,21 +169,21 @@ def _n_iter(grid: dict) -> int:
 def _save_csv(df: pd.DataFrame, name: str):
     p = OUTPUT_DIR / name
     df.to_csv(p, index=False)
-    log.info("  Saved → %s", p)
+    log.info(" Saved → %s", p)
 
 
 def _savefig(name: str):
     p = OUTPUT_DIR / name
     plt.savefig(p, dpi=150, bbox_inches="tight")
     plt.close()
-    log.info("  Saved → %s", p)
+    log.info(" Saved → %s", p)
+
 
 # tuning helpers
 
-
 def _run_search(name, estimator, grid, X, y, scoring, cv, summary_rows):
     n_iter = _n_iter(grid)
-    log.info("    Tuning %-24s  grid=%d  n_iter=%d",
+    log.info(" Tuning %-24s grid=%d n_iter=%d",
              name, prod(len(v) for v in grid.values()), n_iter)
     search = RandomizedSearchCV(
         estimator, grid, n_iter=n_iter, cv=cv, scoring=scoring,
@@ -193,8 +193,7 @@ def _run_search(name, estimator, grid, X, y, scoring, cv, summary_rows):
     search.fit(X, y)
     sign = -1 if scoring.startswith("neg_") else 1
     score = sign * search.best_score_
-    log.info("    %-24s  score=%.4f  params=%s",
-             name, score, search.best_params_)
+    log.info(" %-24s score=%.4f params=%s", name, score, search.best_params_)
     summary_rows.append({
         "model": name, "best_score": round(score, 5),
         "n_iter": n_iter,
@@ -225,11 +224,12 @@ def _save_tuning_artifacts(summary_rows, cv_results_map, block, scoring_label):
         ax.set_ylabel(scoring_label)
         ax.set_title(f"{block} — Tuning Score Distribution")
         ax.grid(axis="y", linewidth=0.5, alpha=0.5)
-        plt.tight_layout()
-        _savefig(f"tune_trials_{block}.png")
+    plt.tight_layout()
+    _savefig(f"tune_trials_{block}.png")
 
 
 # significance tests
+
 def _significance_table(fold_scores: dict, output_name: str):
     rows = []
     for a, b in combinations(fold_scores.keys(), 2):
@@ -244,6 +244,7 @@ def _significance_table(fold_scores: dict, output_name: str):
 
 
 # feature importance plots
+
 def _plot_importances(models, feature_cols, X, y, block, color="steelblue"):
     """SHAP for trees; coefficients for linear models."""
     tree_names = [n for n in ("Random Forest", "Decision Tree", "XGBoost")
@@ -383,11 +384,11 @@ def _plot_roc(models, X, y, block):
         mt[-1] = 1.0
         ax.plot(mean_fpr, mt, color=color, lw=2,
                 label=f"{name} AUC={np.mean(aucs):.2f}±{np.std(aucs):.2f}")
-        ax.plot([0, 1], [0, 1], "k--", lw=1)
-        ax.set_xlabel("FPR")
-        ax.set_ylabel("TPR")
-        ax.set_title(f"{block} — ROC")
-        ax.legend(loc="lower right", fontsize=9)
+    ax.plot([0, 1], [0, 1], "k--", lw=1)
+    ax.set_xlabel("FPR")
+    ax.set_ylabel("TPR")
+    ax.set_title(f"{block} — ROC")
+    ax.legend(loc="lower right", fontsize=9)
     plt.tight_layout()
     _savefig(f"{block}_roc.png")
 
@@ -396,29 +397,29 @@ def _evaluate_classifiers(models, X, y, block):
     cv = StratifiedKFold(n_splits=N_SPLITS, shuffle=True,
                          random_state=RANDOM_STATE)
     scorers = {
-        "accuracy":  make_scorer(accuracy_score),
+        "accuracy": make_scorer(accuracy_score),
         "precision": make_scorer(precision_score, zero_division=0),
-        "recall":    make_scorer(recall_score, zero_division=0),
-        "f1":        make_scorer(f1_score, zero_division=0),
-        "roc_auc":   make_scorer(roc_auc_score, needs_proba=True),
-        "brier":     make_scorer(brier_score_loss, needs_proba=True,
-                                 greater_is_better=False),
+        "recall": make_scorer(recall_score, zero_division=0),
+        "f1": make_scorer(f1_score, zero_division=0),
+        "roc_auc": make_scorer(roc_auc_score, needs_proba=True),
+        "brier": make_scorer(brier_score_loss, needs_proba=True,
+                             greater_is_better=False),
     }
     records, fold_aucs = [], {}
     for name, model in models.items():
-        log.info("  Evaluating %-24s …", name)
+        log.info(" Evaluating %-24s …", name)
         s = cross_validate(model, X, y, cv=cv, scoring=scorers, n_jobs=-1)
         fold_aucs[name] = s["test_roc_auc"]
         records.append({
-            "Model":     name,
-            "Accuracy":  s["test_accuracy"].mean(),
+            "Model": name,
+            "Accuracy": s["test_accuracy"].mean(),
             "Precision": s["test_precision"].mean(),
-            "Recall":    s["test_recall"].mean(),
-            "F1":        s["test_f1"].mean(),
-            "ROC-AUC":   s["test_roc_auc"].mean(),
+            "Recall": s["test_recall"].mean(),
+            "F1": s["test_f1"].mean(),
+            "ROC-AUC": s["test_roc_auc"].mean(),
             "Brier": -s["test_brier"].mean(),
-            "F1±":       s["test_f1"].std(),
-            "AUC±":      s["test_roc_auc"].std(),
+            "F1±": s["test_f1"].std(),
+            "AUC±": s["test_roc_auc"].std(),
         })
     df = pd.DataFrame(records).set_index("Model")
     _save_csv(df.round(4).reset_index(), f"{block}_results.csv")
@@ -463,7 +464,7 @@ def _optimise_threshold(model, X, y, cost_fp, cost_fn):
                 y[te], preds, labels=[0, 1]).ravel()
             costs[i] += cost_fp * fp + cost_fn * fn
     best_t = thresholds[np.argmin(costs)]
-    log.info("  Optimal threshold (FP=%.1f FN=%.1f): %.2f",
+    log.info(" Optimal threshold (FP=%.1f FN=%.1f): %.2f",
              cost_fp, cost_fn, best_t)
     return best_t
 
@@ -487,35 +488,34 @@ def _smote_wrap(est):
 
 
 # shared classifier grids
-
 def _clf_grids(spw=1.0):
     g = {
         "Logistic Regression": {
-            "clf__C":       np.logspace(-3, 3, 40).tolist(),
+            "clf__C": np.logspace(-3, 3, 40).tolist(),
             "clf__penalty": ["l1", "l2"],
-            "clf__solver":  ["liblinear", "saga"],
+            "clf__solver": ["liblinear", "saga"],
         },
         "Decision Tree": {
-            "max_depth":         [3, 4, 6, 8, 10, None],
-            "min_samples_leaf":  [1, 3, 5, 10, 20],
+            "max_depth": [3, 4, 6, 8, 10, None],
+            "min_samples_leaf": [1, 3, 5, 10, 20],
             "min_samples_split": [2, 5, 10, 20],
-            "max_features":      ["sqrt", "log2", None],
+            "max_features": ["sqrt", "log2", None],
         },
         "Random Forest": {
-            "n_estimators":      [100, 200, 300, 500],
-            "max_depth":         [5, 8, 10, 15, None],
-            "max_features":      ["sqrt", "log2", 0.3, 0.5],
-            "min_samples_leaf":  [1, 3, 5, 10],
+            "n_estimators": [100, 200, 300, 500],
+            "max_depth": [5, 8, 10, 15, None],
+            "max_features": ["sqrt", "log2", 0.3, 0.5],
+            "min_samples_leaf": [1, 3, 5, 10],
         },
     }
     if HAS_BOOSTER:
         g["XGBoost"] = {
-            "n_estimators":     [100, 200, 300, 500],
-            "max_depth":        [3, 4, 5, 6, 8],
-            "learning_rate":    [0.005, 0.01, 0.05, 0.1, 0.2],
-            "subsample":        [0.6, 0.7, 0.8, 0.9, 1.0],
+            "n_estimators": [100, 200, 300, 500],
+            "max_depth": [3, 4, 5, 6, 8],
+            "learning_rate": [0.005, 0.01, 0.05, 0.1, 0.2],
+            "subsample": [0.6, 0.7, 0.8, 0.9, 1.0],
             "colsample_bytree": [0.6, 0.7, 0.8, 1.0],
-            "reg_alpha":        [0, 0.01, 0.1, 1.0],
+            "reg_alpha": [0, 0.01, 0.1, 1.0],
             "scale_pos_weight": [spw * f for f in (0.5, 0.75, 1.0, 1.25, 1.5)],
         }
     return g
@@ -559,119 +559,218 @@ def load_raw(paths) -> pd.DataFrame:
     df["date"] = pd.to_datetime(df.get("date"), errors="coerce")
     return df
 
-# BLOCK 1 — Level Difficulty Curve
 
+# BLOCK 1 — Difficulty Analysis
 
 def run_block1(df: pd.DataFrame):
-    log.info("\n=== Block 1 — Level Difficulty Curve ===")
+    log.info("\n=== Block 1 — Difficulty Analysis (position + theme) ===")
 
-    needed = {"level", "level_status", "completion_pct", "drop_off_pct",
-              "hints_used", "time_to_first_word_sec", "duration_sec"}
-    missing = needed - set(df.columns)
-    if missing:
-        log.warning("Missing columns %s — skipping Block 1.", missing)
+    needed = {"level_status", "level_seq"}
+    if not needed.issubset(df.columns):
+        log.warning("Missing columns %s — skipping Block 1.",
+                    needed - set(df.columns))
         return
 
-    d = df.dropna(subset=["level"]).copy()
-    d["level"] = d["level"].astype(str).str.strip()
+    d = df.copy()
     d["completed"] = (d["level_status"] == "completed").astype(int)
     d["abandoned"] = (d["level_status"] == "abandoned").astype(int)
 
-    agg = d.groupby("level").agg(
+    # Position-in-session curve
+    # Cap level_seq at the 95th percentile to avoid noise from outlier sessions
+    seq_cap = int(d["level_seq"].quantile(
+        0.95)) if d["level_seq"].notna().any() else 20
+    seq_df = d[d["level_seq"] <= seq_cap].copy()
+
+    seq_agg = seq_df.groupby("level_seq").agg(
         attempts=("level_status", "count"),
-        completion_rate=("completed",    "mean"),
-        abandonment_rate=("abandoned",    "mean"),
+        completion_rate=("completed", "mean"),
+        abandonment_rate=("abandoned", "mean"),
         avg_completion_pct=("completion_pct", "mean"),
-        avg_drop_off_pct=("drop_off_pct",   "mean"),
-        avg_hints=("hints_used",      "mean"),
+        avg_hints=("hints_used", "mean"),
         avg_time_first_word=("time_to_first_word_sec", "mean"),
-        avg_duration_sec=("duration_sec",    "mean"),
-        median_duration_sec=("duration_sec",    "median"),
+        avg_duration_sec=("duration_sec", "mean"),
+        avg_drop_off=("drop_off_pct", "mean"),
     ).reset_index()
 
-    # difficulty score: higher = harder
-    # weights: abandonment is the strongest signal, then hints, then drop-off
-    agg["difficulty_score"] = (
-        0.5 * agg["abandonment_rate"] +
-        0.3 * (1 - agg["completion_rate"]) +
-        0.2 * (agg["avg_hints"] / (agg["avg_hints"].max() + 1e-9))
-    ).round(4)
+    # Survival curve: share of sessions still active at each position
+    # (attempts at position n / attempts at position 1)
+    base_attempts = seq_agg.loc[seq_agg["level_seq"] == seq_agg["level_seq"].min(),
+                                "attempts"].values
+    if len(base_attempts):
+        seq_agg["survival_rate"] = seq_agg["attempts"] / base_attempts[0]
+    else:
+        seq_agg["survival_rate"] = 1.0
 
-    agg = agg.sort_values("difficulty_score", ascending=False)
-    _save_csv(agg, "block1_level_difficulty.csv")
-    log.info("  Top 10 hardest levels:\n%s",
-             agg[["level", "attempts", "completion_rate", "abandonment_rate",
-                  "avg_hints", "difficulty_score"]].head(10).to_string(index=False))
+    _save_csv(seq_agg, "block1_position_curve.csv")
+    log.info(" Position curve: %d distinct level_seq values (capped at %d)",
+             len(seq_agg), seq_cap)
 
-    # theme-letter breakdown
-    if "theme_letter" in df.columns:
-        theme = df.copy()
-        theme["completed"] = (theme["level_status"] == "completed").astype(int)
-        theme_agg = theme.groupby("theme_letter").agg(
-            attempts=("level_status",  "count"),
-            completion_rate=("completed",      "mean"),
-            avg_hints=("hints_used",     "mean"),
-            avg_drop_off=("drop_off_pct",   "mean"),
-        ).reset_index().sort_values("completion_rate")
+    # Theme-letter breakdown
+    theme_agg = None
+    if "theme_letter" in d.columns:
+        theme_agg = d.groupby("theme_letter").agg(
+            attempts=("level_status", "count"),
+            completion_rate=("completed", "mean"),
+            abandonment_rate=("abandoned", "mean"),
+            avg_hints=("hints_used", "mean"),
+            avg_drop_off=("drop_off_pct", "mean"),
+            avg_time_first_word=("time_to_first_word_sec", "mean"),
+            avg_completion_pct=("completion_pct", "mean"),
+        ).reset_index()
+
+        # Composite difficulty score per theme
+        theme_agg["difficulty_score"] = (
+            0.5 * theme_agg["abandonment_rate"] +
+            0.3 * (1 - theme_agg["completion_rate"]) +
+            0.2 * (theme_agg["avg_hints"] /
+                   (theme_agg["avg_hints"].max() + 1e-9))
+        ).round(4)
+        theme_agg = theme_agg.sort_values("difficulty_score", ascending=False)
         _save_csv(theme_agg, "block1_theme_difficulty.csv")
+        log.info(" Theme difficulty (top 5):\n%s",
+                 theme_agg[["theme_letter", "attempts", "completion_rate",
+                            "abandonment_rate", "difficulty_score"]]
+                 .head(5).to_string(index=False))
 
-    # plots
-    top_n = min(30, len(agg))
-    plot_df = agg.head(top_n).sort_values("difficulty_score")
+    # Level-parameter difficulty proxy
+    # words_total is a parameter of the generated level; higher = harder
+    param_agg = None
+    if "words_total" in d.columns and d["words_total"].notna().any():
+        d["words_total_bin"] = pd.cut(d["words_total"], bins=5,
+                                      labels=["XS", "S", "M", "L", "XL"])
+        param_agg = d.groupby("words_total_bin", observed=True).agg(
+            attempts=("level_status", "count"),
+            completion_rate=("completed", "mean"),
+            abandonment_rate=("abandoned", "mean"),
+            avg_hints=("hints_used", "mean"),
+        ).reset_index()
+        _save_csv(param_agg, "block1_wordcount_difficulty.csv")
 
-    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
-    fig.suptitle("Block 1 — Level Difficulty Analysis", fontsize=14)
+    # Session-position × theme interaction
+    # Which themes get harder as the user progresses through a session?
+    interaction = None
+    if "theme_letter" in d.columns:
+        interaction = (
+            d[d["level_seq"] <= seq_cap]
+            .groupby(["theme_letter", "level_seq"])
+            .agg(completion_rate=("completed", "mean"),
+                 abandonment_rate=("abandoned", "mean"))
+            .reset_index()
+        )
+        _save_csv(interaction, "block1_theme_x_position.csv")
 
-    # completion vs abandonment rate
-    ax = axes[0]
-    x = range(len(plot_df))
-    ax.barh(x, plot_df["completion_rate"],
-            label="Completion",  alpha=0.75, color="steelblue")
-    ax.barh(x, -plot_df["abandonment_rate"],
-            label="Abandonment", alpha=0.75, color="tomato")
-    ax.set_yticks(x)
-    ax.set_yticklabels(plot_df["level"], fontsize=7)
-    ax.set_xlabel("Rate")
-    ax.set_title("Completion vs Abandonment")
-    ax.axvline(0, color="black", lw=0.8)
+    # PLOTS
+
+    fig = plt.figure(figsize=(20, 12))
+    fig.suptitle("Block 1 — Difficulty Analysis\n"
+                 "(levels are procedurally generated; analysed by position & theme)",
+                 fontsize=14)
+    gs = fig.add_gridspec(2, 3, hspace=0.4, wspace=0.35)
+
+    # Plot 1: Completion & abandonment rate by position
+    ax = fig.add_subplot(gs[0, 0])
+    ax.plot(seq_agg["level_seq"], seq_agg["completion_rate"],
+            "o-", color="steelblue", lw=2, ms=4, label="Completion")
+    ax.plot(seq_agg["level_seq"], seq_agg["abandonment_rate"],
+            "s--", color="tomato", lw=2, ms=4, label="Abandonment")
+    ax.set_xlabel("Level position in session")
+    ax.set_ylabel("Rate")
+    ax.set_title("Completion & Abandonment by Position")
     ax.legend(fontsize=9)
+    ax.grid(alpha=0.3)
 
-    # avg hints per level
-    ax = axes[1]
-    bars = ax.barh(x, plot_df["avg_hints"], color="orange", alpha=0.85)
-    ax.set_yticks(x)
-    ax.set_yticklabels(plot_df["level"], fontsize=7)
-    ax.set_xlabel("Avg Hints Used")
-    ax.set_title("Hint Usage by Level")
+    # Plot 2: Session survival curve
+    ax = fig.add_subplot(gs[0, 1])
+    ax.fill_between(seq_agg["level_seq"], seq_agg["survival_rate"],
+                    alpha=0.3, color="steelblue")
+    ax.plot(seq_agg["level_seq"], seq_agg["survival_rate"],
+            "o-", color="steelblue", lw=2, ms=4)
+    ax.set_xlabel("Level position in session")
+    ax.set_ylabel("Fraction of sessions still active")
+    ax.set_title("Session Survival Curve")
+    ax.set_ylim(0, 1.05)
+    ax.grid(alpha=0.3)
 
-    # difficulty score
-    ax = axes[2]
-    colors_diff = plt.cm.RdYlGn_r(
-        (plot_df["difficulty_score"] - plot_df["difficulty_score"].min()) /
-        (plot_df["difficulty_score"].max() -
-         plot_df["difficulty_score"].min() + 1e-9)
-    )
-    ax.barh(x, plot_df["difficulty_score"], color=colors_diff, alpha=0.9)
-    ax.set_yticks(x)
-    ax.set_yticklabels(plot_df["level"], fontsize=7)
-    ax.set_xlabel("Difficulty Score")
-    ax.set_title("Composite Difficulty Score")
+    # Plot 3: Avg hints by position
+    ax = fig.add_subplot(gs[0, 2])
+    if "avg_hints" in seq_agg.columns and seq_agg["avg_hints"].notna().any():
+        ax.bar(seq_agg["level_seq"], seq_agg["avg_hints"],
+               color="orange", alpha=0.8)
+        ax.set_xlabel("Level position in session")
+        ax.set_ylabel("Avg hints used")
+        ax.set_title("Hint Usage by Position")
+        ax.grid(axis="y", alpha=0.3)
+    else:
+        ax.set_title("Hint Usage\n(no data)")
+        ax.set_visible(False)
 
-    plt.tight_layout()
-    _savefig("block1_difficulty_curve.png")
+    # Plot 4: Theme difficulty bar
+    ax = fig.add_subplot(gs[1, 0])
+    if theme_agg is not None and len(theme_agg):
+        t = theme_agg.sort_values("difficulty_score")
+        norm = plt.Normalize(t["difficulty_score"].min(),
+                             t["difficulty_score"].max())
+        colors_t = plt.cm.RdYlGn_r(norm(t["difficulty_score"]))
+        ax.barh(t["theme_letter"], t["difficulty_score"],
+                color=colors_t, alpha=0.9)
+        ax.set_xlabel("Difficulty score")
+        ax.set_title("Theme Difficulty Ranking")
+        ax.grid(axis="x", alpha=0.3)
+    else:
+        ax.set_title("Theme Difficulty\n(no theme_letter column)")
+        ax.axis("off")
 
-    # heatmap: theme × metric
-    if "theme_letter" in df.columns and len(theme_agg) >= 3:
-        pivot_cols = ["completion_rate", "avg_hints", "avg_drop_off"]
-        heat = theme_agg.set_index("theme_letter")[pivot_cols]
-        fig, ax = plt.subplots(figsize=(8, max(4, len(heat) * 0.4)))
+    # Plot 5: Theme heatmap
+    ax = fig.add_subplot(gs[1, 1])
+    if theme_agg is not None and len(theme_agg) >= 2:
+        heat_cols = ["completion_rate", "abandonment_rate",
+                     "avg_hints", "avg_drop_off"]
+        heat_cols = [c for c in heat_cols if c in theme_agg.columns]
+        heat = theme_agg.set_index("theme_letter")[heat_cols]
         sns.heatmap(heat, annot=True, fmt=".2f", cmap="RdYlGn_r",
-                    linewidths=0.5, ax=ax)
-        ax.set_title("Block 1 — Theme Difficulty Heatmap")
-        plt.tight_layout()
-        _savefig("block1_theme_heatmap.png")
+                    linewidths=0.5, ax=ax, cbar=False)
+        ax.set_title("Theme Metrics Heatmap")
+    else:
+        ax.set_title("Theme Heatmap\n(not enough themes)")
+        ax.axis("off")
 
-    log.info("  Block 1 complete.")
+    # Plot 6: Word-count difficulty (if available)
+    ax = fig.add_subplot(gs[1, 2])
+    if param_agg is not None and len(param_agg):
+        ax.bar(param_agg["words_total_bin"].astype(str),
+               param_agg["completion_rate"], color="steelblue", alpha=0.8,
+               label="Completion")
+        ax.bar(param_agg["words_total_bin"].astype(str),
+               -param_agg["abandonment_rate"], color="tomato", alpha=0.8,
+               label="Abandonment")
+        ax.axhline(0, color="black", lw=0.8)
+        ax.set_xlabel("words_total bucket (XS→XL = easier→harder)")
+        ax.set_ylabel("Rate")
+        ax.set_title("Difficulty by Word Count")
+        ax.legend(fontsize=9)
+        ax.grid(axis="y", alpha=0.3)
+    else:
+        ax.set_title("Word-count difficulty\n(words_total not available)")
+        ax.axis("off")
+
+    _savefig("block1_difficulty_analysis.png")
+
+    # Bonus: theme × position heatmap (completion rate)
+    if interaction is not None and len(interaction["theme_letter"].unique()) >= 2:
+        pivot = interaction.pivot_table(
+            index="theme_letter", columns="level_seq",
+            values="completion_rate", aggfunc="mean",
+        )
+        fig, ax = plt.subplots(figsize=(max(8, len(pivot.columns) * 0.6),
+                                        max(4, len(pivot) * 0.5)))
+        sns.heatmap(pivot, annot=True, fmt=".2f", cmap="RdYlGn",
+                    linewidths=0.3, ax=ax, vmin=0, vmax=1)
+        ax.set_title("Block 1 — Completion Rate: Theme × Session Position")
+        ax.set_xlabel("Level position in session")
+        plt.tight_layout()
+        _savefig("block1_theme_x_position_heatmap.png")
+
+    log.info(" Block 1 complete.")
 
 # BLOCK 2 — Session Quality Segmentation (KMeans)
 
@@ -682,7 +781,7 @@ def _build_session_features(df: pd.DataFrame) -> pd.DataFrame:
     d["completed"] = (d["level_status"] == "completed").astype(float)
     d["abandoned"] = (d["level_status"] == "abandoned").astype(float)
 
-    # per-user first-session aggregates
+    # Per-user first-session aggregates
     def agg_first(g):
         g = g.sort_values("level_seq") if "level_seq" in g.columns else g
         n = len(g)
@@ -693,33 +792,33 @@ def _build_session_features(df: pd.DataFrame) -> pd.DataFrame:
         ) if "time_to_first_word_sec" in g.columns else 0
         sess_dur = g["visit_duration_sec"].iloc[0] if "visit_duration_sec" in g.columns else 0
 
-        # improvement: did completion_pct rise across the session?
+        # Improvement: did completion_pct rise across the session?
         cp = g["completion_pct"].dropna()
         if len(cp) >= 2:
             improvement = float(np.polyfit(range(len(cp)), cp, 1)[0])
         else:
             improvement = 0.0
 
-        # did the user finish the last level they started?
+        # Did the user finish the last level they started?
         last_status = g["level_status"].iloc[-1] if n > 0 else ""
         last_completed = 1.0 if last_status == "completed" else 0.0
 
-        # first-level engagement
+        # First-level engagement
         first_words = g["words_found"].iloc[0] if "words_found" in g.columns else 0
         first_total = g["words_total"].iloc[0] if "words_total" in g.columns else 1
         first_word_rate = float(first_words) / max(float(first_total), 1)
 
         return pd.Series({
-            "n_levels":          n,
-            "completion_rate":   comp_rate,
-            "abandonment_rate":  aband_rate,
-            "avg_hints":         avg_hints,
+            "n_levels": n,
+            "completion_rate": comp_rate,
+            "abandonment_rate": aband_rate,
+            "avg_hints": avg_hints,
             "avg_time_first_word": avg_tfw,
-            "session_duration":  sess_dur,
-            "improvement":       improvement,
-            "last_completed":    last_completed,
-            "first_word_rate":   first_word_rate,
-            "hints_per_level":   avg_hints / max(n, 1),
+            "session_duration": sess_dur,
+            "improvement": improvement,
+            "last_completed": last_completed,
+            "first_word_rate": first_word_rate,
+            "hints_per_level": avg_hints / max(n, 1),
         })
 
     first_date = d.groupby("client_id")["date"].transform("min")
@@ -763,14 +862,14 @@ def run_block2(df: pd.DataFrame):
             sil_scores.append(-1)
 
     best_k = list(k_range)[int(np.argmax(sil_scores))]
-    log.info("  Best k=%d (silhouette=%.3f)", best_k, max(sil_scores))
+    log.info(" Best k=%d (silhouette=%.3f)", best_k, max(sil_scores))
 
     km_final = KMeans(n_clusters=best_k, random_state=RANDOM_STATE, n_init=10)
     features["cluster"] = km_final.fit_predict(X_sc)
 
     # label clusters by engagement level
     cluster_means = features.groupby("cluster")[feat_cols].mean()
-    # rank clusters by completion_rate descending to assign labels
+    # Rank clusters by completion_rate descending to assign labels
     ranked = cluster_means["completion_rate"].sort_values(
         ascending=False).index.tolist()
     label_map = {}
@@ -787,7 +886,7 @@ def run_block2(df: pd.DataFrame):
     _save_csv(features[["client_id", "cluster", "segment"]],
               "block2_user_segments.csv")
 
-    log.info("  Segment sizes:\n%s",
+    log.info(" Segment sizes:\n%s",
              features["segment"].value_counts().to_string())
 
     # plots
@@ -795,7 +894,7 @@ def run_block2(df: pd.DataFrame):
     fig.suptitle("Block 2 — Session Quality Segments", fontsize=14)
     colors = plt.cm.tab10.colors
 
-    # silhouette curve
+    # Silhouette curve
     ax = axes[0]
     ax.plot(list(k_range), sil_scores, "o-", color="steelblue")
     ax.axvline(best_k, color="tomato", ls="--", label=f"Best k={best_k}")
@@ -804,7 +903,7 @@ def run_block2(df: pd.DataFrame):
     ax.set_title("Optimal k Selection")
     ax.legend()
 
-    # segment sizes
+    # Segment sizes
     ax = axes[1]
     seg_counts = features["segment"].value_counts()
     ax.barh(seg_counts.index, seg_counts.values,
@@ -814,7 +913,7 @@ def run_block2(df: pd.DataFrame):
     for i, (idx, val) in enumerate(seg_counts.items()):
         ax.text(val + 0.3, i, str(val), va="center", fontsize=9)
 
-    # pca scatter
+    # PCA scatter
     ax = axes[2]
     pca = PCA(n_components=2, random_state=RANDOM_STATE)
     X_2d = pca.fit_transform(X_sc)
@@ -830,7 +929,7 @@ def run_block2(df: pd.DataFrame):
     plt.tight_layout()
     _savefig("block2_segments.png")
 
-    # heatmap of segment profiles
+    # Heatmap of segment profiles
     heat_cols = ["completion_rate", "abandonment_rate", "avg_hints",
                  "improvement", "last_completed", "n_levels"]
     heat_cols = [c for c in heat_cols if c in segment_profile.columns]
@@ -842,10 +941,10 @@ def run_block2(df: pd.DataFrame):
         plt.tight_layout()
         _savefig("block2_segment_heatmap.png")
 
-    log.info("  Block 2 complete.")
+    log.info(" Block 2 complete.")
+
 
 # BLOCK 3 — Level Abandonment Classifier
-
 
 def _build_abandonment_dataset(df: pd.DataFrame):
     """One row per level attempt; target = abandoned (1) or not (0)."""
@@ -865,7 +964,7 @@ def _build_abandonment_dataset(df: pd.DataFrame):
     if "date" in d.columns:
         d["is_weekend"] = d["date"].dt.dayofweek.isin([5, 6]).astype(int)
 
-    # previous-attempt performance in same session (rolling context)
+    # Previous-attempt performance in same session (rolling context)
     d = d.sort_values(["session_id", "level_seq"])
     d["prev_completion_pct"] = d.groupby(
         "session_id")["completion_pct"].shift(1).fillna(0)
@@ -912,8 +1011,8 @@ def _build_clf_models(spw, tune, X, y, grids_override=None, block=""):
 
     lr = maybe_tune("Logistic Regression", Pipeline([
         ("scaler", StandardScaler()),
-        ("clf",    LogisticRegression(max_iter=2000, random_state=RANDOM_STATE,
-                                      class_weight="balanced")),
+        ("clf", LogisticRegression(max_iter=2000, random_state=RANDOM_STATE,
+                                   class_weight="balanced")),
     ]))
     dt = maybe_tune("Decision Tree",
                     DecisionTreeClassifier(random_state=RANDOM_STATE,
@@ -924,8 +1023,8 @@ def _build_clf_models(spw, tune, X, y, grids_override=None, block=""):
 
     models = {
         "Logistic Regression": _smote_wrap(lr),
-        "Decision Tree":       _smote_wrap(dt),
-        "Random Forest":       _smote_wrap(rf),
+        "Decision Tree": _smote_wrap(dt),
+        "Random Forest": _smote_wrap(rf),
     }
 
     if HAS_BOOSTER:
@@ -950,7 +1049,7 @@ def run_block3(df: pd.DataFrame, tune: bool = False):
     X, y, feat_cols = _build_abandonment_dataset(df)
     n_pos = int(y.sum())
     n_total = len(y)
-    log.info("  Attempts: %d,  abandoned: %d (%.1f%%)",
+    log.info(" Attempts: %d, abandoned: %d (%.1f%%)",
              n_total, n_pos, 100 * n_pos / n_total)
 
     if n_total < 50:
@@ -960,7 +1059,7 @@ def run_block3(df: pd.DataFrame, tune: bool = False):
         log.warning("No abandoned levels found — skipping Block 3.")
         return
 
-    log.info("  Features (%d): %s", len(feat_cols), feat_cols)
+    log.info(" Features (%d): %s", len(feat_cols), feat_cols)
     spw = (n_total - n_pos) / max(n_pos, 1)
     models = _build_clf_models(spw, tune, X, y, block="block3")
     results = _evaluate_classifiers(models, X, y, "block3")
@@ -976,7 +1075,7 @@ def run_block3(df: pd.DataFrame, tune: bool = False):
     best_model = models[best]
     best_model.fit(X, y)
     joblib.dump(best_model, MODEL_DIR / "block3_abandonment_model.pkl")
-    log.info("  Model saved → %s", MODEL_DIR / "block3_abandonment_model.pkl")
+    log.info(" Model saved → %s", MODEL_DIR / "block3_abandonment_model.pkl")
 
     cv_lc = StratifiedKFold(n_splits=3, shuffle=True,
                             random_state=RANDOM_STATE)
@@ -986,10 +1085,10 @@ def run_block3(df: pd.DataFrame, tune: bool = False):
     _plot_importances(models, feat_cols, X, y, "block3", color="darkorange")
     _plot_learning_curves(models, X, y, "block3", "roc_auc", cv_lc)
 
-    log.info("  Block 3 complete.")
+    log.info(" Block 3 complete.")
+
 
 # BLOCK 4 — D7 Retention Classifier
-
 
 def _build_d7_dataset(df: pd.DataFrame, window: int = D7_WINDOW):
     """
@@ -1005,7 +1104,7 @@ def _build_d7_dataset(df: pd.DataFrame, window: int = D7_WINDOW):
     dates_df = pd.concat([first_date, last_date], axis=1)
     dates_df["days_gap"] = (dates_df["last_date"] -
                             dates_df["first_date"]).dt.days
-    # only label users whose first session is old enough to observe D7
+    # Only label users whose first session is old enough to observe D7
     # (i.e. first_date <= max_date - window)
     max_date = d["date"].max()
     observable = dates_df[dates_df["first_date"]
@@ -1034,20 +1133,20 @@ def _build_d7_dataset(df: pd.DataFrame, window: int = D7_WINDOW):
         hour = g["hour_of_day"].iloc[0] \
             if "hour_of_day" in g.columns else 12.0
 
-        # trajectory: slope of completion_pct across level_seq
+        # Trajectory: slope of completion_pct across level_seq
         cp = g["completion_pct"].dropna()
         improvement = float(np.polyfit(range(len(cp)), cp, 1)[0]) \
             if len(cp) >= 2 else 0.0
 
-        # last-level outcome
+        # Last-level outcome
         last_completed = 1.0 if g["level_status"].iloc[-1] == "completed" else 0.0
 
-        # first-level word-finding rate
+        # First-level word-finding rate
         fw = g["words_found"].iloc[0] if "words_found" in g.columns else 0
         ft = g["words_total"].iloc[0] if "words_total" in g.columns else 1
         first_word_rate = float(fw) / max(float(ft), 1)
 
-        # theme diversity: how many distinct themes played?
+        # Theme diversity: how many distinct themes played?
         n_themes = g["theme_letter"].nunique(
         ) if "theme_letter" in g.columns else 1
 
@@ -1060,39 +1159,39 @@ def _build_d7_dataset(df: pd.DataFrame, window: int = D7_WINDOW):
 
         return pd.Series({
             # volume
-            "n_levels":           n,
-            "session_duration":   sess_dur,
-            "page_views":         g["page_views"].iloc[0]
+            "n_levels": n,
+            "session_duration": sess_dur,
+            "page_views": g["page_views"].iloc[0]
             if "page_views" in g.columns else 0,
             # performance
-            "completion_rate":    comp_rate,
-            "abandonment_rate":   aband_rate,
-            "avg_hints":          avg_hints,
-            "hints_per_level":    avg_hints / max(n, 1),
+            "completion_rate": comp_rate,
+            "abandonment_rate": aband_rate,
+            "avg_hints": avg_hints,
+            "hints_per_level": avg_hints / max(n, 1),
             "avg_time_first_word": avg_tfw,
             # trajectory
-            "improvement":        improvement,
-            "last_completed":     last_completed,
-            "first_word_rate":    first_word_rate,
-            "n_themes":           n_themes,
+            "improvement": improvement,
+            "last_completed": last_completed,
+            "first_word_rate": first_word_rate,
+            "n_themes": n_themes,
             # engagement composite
-            "engagement_score":   engagement,
+            "engagement_score": engagement,
             # time context
-            "hour_of_day":        hour,
+            "hour_of_day": hour,
             "session_period_enc": {"night": 0, "morning": 1, "afternoon": 2, "evening": 3}
             .get(hour_to_period(float(hour)), 1),
-            "day_of_week":        dow,
-            "is_weekend":         weekend,
+            "day_of_week": dow,
+            "is_weekend": weekend,
             # acquisition
-            "ab_group":           g["ab_group"].iloc[0]
+            "ab_group": g["ab_group"].iloc[0]
             if "ab_group" in g.columns else "unknown",
-            "device_category":    g["device_category"].iloc[0]
+            "device_category": g["device_category"].iloc[0]
             if "device_category" in g.columns else "unknown",
-            "region":             g["region"].iloc[0]
+            "region": g["region"].iloc[0]
             if "region" in g.columns else "unknown",
-            "utm_source":         g["utm_source"].iloc[0]
+            "utm_source": g["utm_source"].iloc[0]
             if "utm_source" in g.columns else "unknown",
-            "visit_count":        g["visit_count"].iloc[0]
+            "visit_count": g["visit_count"].iloc[0]
             if "visit_count" in g.columns else 1,
         })
 
@@ -1149,7 +1248,7 @@ def run_block4(df: pd.DataFrame, tune: bool = False,
 
     ret = int(users["retained_d7"].sum())
     total = len(users)
-    log.info("  Observable users: %d,  D7-retained: %d (%.1f%%),  not: %d",
+    log.info(" Observable users: %d, D7-retained: %d (%.1f%%), not: %d",
              total, ret, 100*ret/total if total else 0, total-ret)
 
     if total < 30:
@@ -1166,7 +1265,7 @@ def run_block4(df: pd.DataFrame, tune: bool = False,
         log.warning("Imbalance ratio %.1f:1. SMOTE=%s.", imbalance, HAS_SMOTE)
 
     X, y, feat_cols = _engineer_retention(users)
-    log.info("  Features (%d): %s", len(feat_cols), feat_cols)
+    log.info(" Features (%d): %s", len(feat_cols), feat_cols)
 
     spw = (total - ret) / max(ret, 1)
     models = _build_clf_models(spw, tune, X, y, block="block4")
@@ -1183,17 +1282,17 @@ def run_block4(df: pd.DataFrame, tune: bool = False,
     baseline_auc = 0.5
     best_auc = results.loc[best, "ROC-AUC"]
     lift = best_auc - baseline_auc
-    log.info("  AUC lift over random baseline: +%.3f", lift)
+    log.info(" AUC lift over random baseline: +%.3f", lift)
     if lift < 0.05:
         log.warning(
-            "  AUC lift is very small — check feature quality and label.")
+            " AUC lift is very small — check feature quality and label.")
 
     # persist
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
     best_model = models[best]
     best_model.fit(X, y)
     joblib.dump(best_model, MODEL_DIR / "block4_retention_model.pkl")
-    log.info("  Model saved → %s", MODEL_DIR / "block4_retention_model.pkl")
+    log.info(" Model saved → %s", MODEL_DIR / "block4_retention_model.pkl")
 
     # threshold optimisation
     try:
@@ -1204,9 +1303,9 @@ def run_block4(df: pd.DataFrame, tune: bool = False,
             f"cost_fp={cost_fp}\ncost_fn={cost_fn}\n"
             f"d7_window={D7_WINDOW}\n"
         )
-        log.info("  Threshold → %s", thresh_path)
+        log.info(" Threshold → %s", thresh_path)
     except Exception as e:
-        log.warning("  Threshold optimisation failed: %s", e)
+        log.warning(" Threshold optimisation failed: %s", e)
 
     # plots
     cv_lc = StratifiedKFold(n_splits=3, shuffle=True,
@@ -1239,9 +1338,9 @@ def run_block4(df: pd.DataFrame, tune: bool = False,
         plt.tight_layout()
         _savefig("block4_feature_correlations.png")
     except Exception as e:
-        log.warning("  Correlation plot failed: %s", e)
+        log.warning(" Correlation plot failed: %s", e)
 
-    log.info("  Block 4 complete.")
+    log.info(" Block 4 complete.")
 
 
 # Main
