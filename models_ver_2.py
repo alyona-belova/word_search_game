@@ -54,7 +54,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
-from scipy.stats import wilcoxon
+from scipy.stats import wilcoxon, mannwhitneyu, chi2_contingency
 import seaborn as sns
 import matplotlib.pyplot as plt
 import warnings
@@ -1371,6 +1371,187 @@ def run_block4(df: pd.DataFrame, tune: bool = False,
     log.info(" Block 4 complete.")
 
 
+# A/B Test Analysis
+
+def run_ab_analysis(df: pd.DataFrame):
+    log.info("\n=== A/B Test Analysis ===")
+
+    if "ab_group" not in df.columns:
+        log.warning("No ab_group column — skipping A/B analysis.")
+        return
+
+    d = df[df["ab_group"].isin(["A", "B"])].copy()
+    n_missing = len(df) - len(d)
+    if n_missing:
+        log.info(" Dropped %d rows with no ab_group assigned.", n_missing)
+
+    a = d[d["ab_group"] == "A"]
+    b = d[d["ab_group"] == "B"]
+    log.info(" Group A: %d rows  |  Group B: %d rows", len(a), len(b))
+
+    if len(a) < 5 or len(b) < 5:
+        log.warning("Too few samples in one group — skipping A/B analysis.")
+        return
+
+    d["completed"] = (d["level_status"] == "completed").astype(float)
+
+    # Per-session aggregates (one row per session)
+    sess = (
+        d.groupby(["ab_group", "session_id"])
+        .agg(
+            levels_played=("level_seq", "count"),
+            completion_rate=("completed", "mean"),
+            avg_hints=("hints_used", "mean"),
+            avg_completion_pct=("completion_pct", "mean"),
+        )
+        .reset_index()
+    )
+
+    metrics = {
+        "levels_played":      "Levels played per session",
+        "completion_rate":    "Level completion rate",
+        "avg_hints":          "Avg hints per level",
+        "avg_completion_pct": "Avg completion % per level",
+    }
+
+    rows = []
+    for col, label in metrics.items():
+        ga = sess[sess["ab_group"] == "A"][col].dropna()
+        gb = sess[sess["ab_group"] == "B"][col].dropna()
+        if len(ga) < 3 or len(gb) < 3:
+            continue
+        stat, p = mannwhitneyu(ga, gb, alternative="two-sided")
+        rows.append({
+            "metric":    label,
+            "A_mean":    round(ga.mean(), 4),
+            "B_mean":    round(gb.mean(), 4),
+            "A_median":  round(ga.median(), 4),
+            "B_median":  round(gb.median(), 4),
+            "U_stat":    round(stat, 2),
+            "p_value":   round(p, 4),
+            "significant": "yes" if p < 0.05 else "no",
+        })
+
+    # D7 retention by group (chi-square on counts)
+    if "client_id" in d.columns and "date" in d.columns:
+        max_date = d["date"].max()
+        window = 7
+        first = d.groupby("client_id").agg(
+            first_date=("date", "min"),
+            ab_group=("ab_group", "first"),
+        ).reset_index()
+        last = d.groupby("client_id")["date"].max().rename("last_date")
+        first = first.join(last, on="client_id")
+        first = first[first["first_date"] <= max_date - pd.Timedelta(days=window)]
+        first["returned"] = ((first["last_date"] - first["first_date"]).dt.days.between(1, window)).astype(int)
+
+        for grp in ("A", "B"):
+            sub = first[first["ab_group"] == grp]
+            ret = sub["returned"].sum()
+            total = len(sub)
+            log.info(" Group %s retention: %d/%d (%.1f%%)", grp, ret, total, 100 * ret / max(total, 1))
+
+        ct = pd.crosstab(first["ab_group"], first["returned"])
+        if ct.shape == (2, 2):
+            chi2, p_ret, _, _ = chi2_contingency(ct)
+            ret_a = first[first["ab_group"] == "A"]["returned"].mean()
+            ret_b = first[first["ab_group"] == "B"]["returned"].mean()
+            rows.append({
+                "metric":    "D7 retention rate",
+                "A_mean":    round(ret_a, 4),
+                "B_mean":    round(ret_b, 4),
+                "A_median":  "-",
+                "B_median":  "-",
+                "U_stat":    round(chi2, 2),
+                "p_value":   round(p_ret, 4),
+                "significant": "yes" if p_ret < 0.05 else "no",
+            })
+
+    if not rows:
+        log.warning("No metrics computed for A/B analysis.")
+        return
+
+    results = pd.DataFrame(rows)
+    _save_csv(results, "ab_test_results.csv")
+    log.info("\n" + results[["metric", "A_mean", "B_mean", "p_value", "significant"]].to_string(index=False))
+
+    # Plot
+    plot_metrics = [r for r in rows if r["metric"] != "D7 retention rate"]
+    retention_row = next((r for r in rows if r["metric"] == "D7 retention rate"), None)
+    n_panels = len(plot_metrics) + (1 if retention_row else 0)
+
+    colors = {"A": "#4C72B0", "B": "#DD8452"}
+    fig, axes = plt.subplots(1, n_panels, figsize=(5 * n_panels, 6))
+    if n_panels == 1:
+        axes = [axes]
+
+    def _sig_label(p):
+        if p < 0.001:
+            return "***"
+        if p < 0.01:
+            return "**"
+        if p < 0.05:
+            return "*"
+        return "n.s."
+
+    for ax, row in zip(axes[:len(plot_metrics)], plot_metrics):
+        col = next(c for c, l in metrics.items() if l == row["metric"])
+        ga = sess[sess["ab_group"] == "A"][col].dropna()
+        gb = sess[sess["ab_group"] == "B"][col].dropna()
+
+        plot_df = pd.DataFrame({
+            "value": pd.concat([ga, gb], ignore_index=True),
+            "group": ["A"] * len(ga) + ["B"] * len(gb),
+        })
+        sns.violinplot(data=plot_df, x="group", y="value", ax=ax,
+                       palette=colors, inner=None, alpha=0.45, cut=0)
+        sns.stripplot(data=plot_df, x="group", y="value", ax=ax,
+                      palette=colors, size=4, jitter=True, alpha=0.7)
+
+        for i, (grp, gdata) in enumerate([("A", ga), ("B", gb)]):
+            ax.plot(i, gdata.mean(), marker="D", color="white",
+                    markeredgecolor="black", markersize=7, zorder=5)
+
+        p = row["p_value"]
+        sig = _sig_label(p)
+        y_max = max(ga.max(), gb.max())
+        y_line = y_max * 1.08
+        ax.plot([0, 0, 1, 1], [y_line, y_line * 1.03, y_line * 1.03, y_line],
+                lw=1.2, color="black")
+        ax.text(0.5, y_line * 1.05, f"{sig}  p={p:.4f}",
+                ha="center", va="bottom", fontsize=9)
+
+        ax.set_xlabel("")
+        ax.set_ylabel(row["metric"], fontsize=9)
+        ax.set_xticklabels([
+            f"A\n(n={len(ga)})",
+            f"B\n(n={len(gb)})",
+        ])
+        ax.grid(axis="y", alpha=0.3)
+        ax.set_title(row["metric"], fontsize=10)
+        ax.set_ylabel("")
+
+    # D7 retention bar panel
+    if retention_row and n_panels > len(plot_metrics):
+        ax = axes[len(plot_metrics)]
+        vals = [retention_row["A_mean"] * 100, retention_row["B_mean"] * 100]
+        bars = ax.bar(["A", "B"], vals, color=[colors["A"], colors["B"]],
+                      alpha=0.8, width=0.5)
+        for bar, v in zip(bars, vals):
+            ax.text(bar.get_x() + bar.get_width() / 2, v + 0.3,
+                    f"{v:.1f}%", ha="center", va="bottom", fontsize=10)
+        p = retention_row["p_value"]
+        ax.set_title(f"D7 Retention Rate\np={p:.4f}  {_sig_label(p)}", fontsize=10)
+        ax.set_ylabel("Retention %")
+        ax.set_ylim(0, max(vals) * 2 if max(vals) > 0 else 10)
+        ax.grid(axis="y", alpha=0.3)
+
+    fig.suptitle("A/B Test — Group Comparison (Mann-Whitney U)", fontsize=13, y=1.01)
+    plt.tight_layout()
+    _savefig("ab_test_comparison.png")
+    log.info(" A/B analysis complete.")
+
+
 # Main
 
 def main():
@@ -1409,6 +1590,8 @@ def main():
         run_block4(df, tune=args.tune,
                    cost_fp=args.cost_fp,
                    cost_fn=args.cost_fn)
+
+    run_ab_analysis(df)
 
     log.info("\nDone. All outputs in reports/")
 
