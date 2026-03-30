@@ -123,7 +123,8 @@ log = logging.getLogger(__name__)
 # constants
 RANDOM_STATE = 42
 N_SPLITS = 5
-OUTPUT_DIR = Path("reports")
+INPUT_DIR = Path("reports")
+OUTPUT_DIR = Path("reports/models_ver_2")
 MODEL_DIR = OUTPUT_DIR / "saved_models"
 RARE_THRESHOLD = 5
 DEFAULT_COST_FP = 1.0  # wasted marketing spend
@@ -212,6 +213,7 @@ def _save_tuning_artifacts(summary_rows, cv_results_map, block, scoring_label):
     data, labels = [], []
     for mname, cvr in cv_results_map.items():
         scores = cvr.get("mean_test_score", np.array([]))
+        scores = scores[~np.isnan(scores)]
         if len(scores):
             data.append(scores)
             labels.append(mname)
@@ -224,8 +226,9 @@ def _save_tuning_artifacts(summary_rows, cv_results_map, block, scoring_label):
         ax.set_ylabel(scoring_label)
         ax.set_title(f"{block} — Tuning Score Distribution")
         ax.grid(axis="y", linewidth=0.5, alpha=0.5)
-    plt.tight_layout()
-    _savefig(f"tune_trials_{block}.png")
+        plt.tight_layout()
+        _savefig(f"tune_trials_{block}.png")
+    plt.close()
 
 
 # significance tests
@@ -261,20 +264,23 @@ def _plot_importances(models, feature_cols, X, y, block, color="steelblue"):
         for ax, name in zip(axes, tree_names):
             m = models[name]
             m.fit(X, y)
+            est = m.named_steps["m"] if hasattr(m, "named_steps") and "m" in m.named_steps else m
             if HAS_SHAP:
                 try:
-                    exp = shap.TreeExplainer(m)
+                    exp = shap.TreeExplainer(est)
                     sv = exp.shap_values(X)
                     if isinstance(sv, list):
                         sv = np.abs(np.array(sv)).mean(0)
                     imp = np.abs(sv).mean(0)
+                    if imp.ndim > 1:
+                        imp = imp.mean(-1)
                     xlabel = "|SHAP|"
                 except Exception:
-                    imp = getattr(m, "feature_importances_",
+                    imp = getattr(est, "feature_importances_",
                                   np.zeros(len(feature_cols)))
                     xlabel = "Importance"
             else:
-                imp = getattr(m, "feature_importances_",
+                imp = getattr(est, "feature_importances_",
                               np.zeros(len(feature_cols)))
                 xlabel = "Importance"
             idx = np.argsort(imp)[::-1]
@@ -297,9 +303,14 @@ def _plot_importances(models, feature_cols, X, y, block, color="steelblue"):
             m = models[name]
             m.fit(X, y)
             inner = m
-            for step in ("clf", "reg", "model"):
-                if hasattr(inner, "named_steps") and step in inner.named_steps:
-                    inner = inner.named_steps[step]
+            while hasattr(inner, "named_steps"):
+                found = False
+                for step in ("clf", "reg", "model", "m"):
+                    if step in inner.named_steps:
+                        inner = inner.named_steps[step]
+                        found = True
+                        break
+                if not found:
                     break
             coef = getattr(inner, "coef_", None)
             if coef is None:
@@ -375,11 +386,18 @@ def _plot_roc(models, X, y, block):
     for (name, model), color in zip(models.items(), plt.cm.tab10.colors):
         tprs, aucs = [], []
         for tr, te in cv.split(X, y):
-            model.fit(X[tr], y[tr])
-            viz = RocCurveDisplay.from_estimator(
-                model, X[te], y[te], ax=ax, alpha=0)
-            tprs.append(np.interp(mean_fpr, viz.fpr, viz.tpr))
-            aucs.append(viz.roc_auc)
+            try:
+                model.fit(X[tr], y[tr])
+                viz = RocCurveDisplay.from_estimator(
+                    model, X[te], y[te], ax=ax, alpha=0)
+                if np.isnan(viz.roc_auc):
+                    continue
+                tprs.append(np.interp(mean_fpr, viz.fpr, viz.tpr))
+                aucs.append(viz.roc_auc)
+            except Exception:
+                continue
+        if not tprs:
+            continue
         mt = np.mean(tprs, 0)
         mt[-1] = 1.0
         ax.plot(mean_fpr, mt, color=color, lw=2,
@@ -481,9 +499,19 @@ def _build_booster(spw=1.0, **extra):
     return XGBClassifier(**kw)
 
 
+class _SafeSMOTE(SMOTE):
+    """SMOTE that reduces k_neighbors when minority class is too small."""
+    def fit_resample(self, X, y):
+        min_count = min((y == c).sum() for c in np.unique(y))
+        self.k_neighbors = min(self.k_neighbors, int(min_count) - 1)
+        if self.k_neighbors < 1:
+            return X, y
+        return super().fit_resample(X, y)
+
+
 def _smote_wrap(est):
     if HAS_SMOTE:
-        return ImbPipeline([("smote", SMOTE(random_state=RANDOM_STATE)), ("m", est)])
+        return ImbPipeline([("smote", _SafeSMOTE(random_state=RANDOM_STATE)), ("m", est)])
     return est
 
 
@@ -524,8 +552,8 @@ def _clf_grids(spw=1.0):
 # data loading
 
 def find_latest_tsvs():
-    ru = sorted(OUTPUT_DIR.glob("metrica-sessions-[0-9]*.tsv"))
-    eng = sorted(OUTPUT_DIR.glob("metrica-sessions-eng-*.tsv"))
+    ru = sorted(INPUT_DIR.glob("metrica-sessions-[0-9]*.tsv"))
+    eng = sorted(INPUT_DIR.glob("metrica-sessions-eng-*.tsv"))
     paths = []
     if ru:
         paths.append(ru[-1])
@@ -661,7 +689,7 @@ def run_block1(df: pd.DataFrame):
 
     # PLOTS
 
-    fig = plt.figure(figsize=(20, 12))
+    fig = plt.figure(figsize=(28, 18))
     fig.suptitle("Block 1 — Difficulty Analysis\n"
                  "(levels are procedurally generated; analysed by position & theme)",
                  fontsize=14)
@@ -949,7 +977,7 @@ def run_block2(df: pd.DataFrame):
 def _build_abandonment_dataset(df: pd.DataFrame):
     """One row per level attempt; target = abandoned (1) or not (0)."""
     d = df.copy()
-    d["target"] = (d["level_status"] == "abandoned").astype(int)
+    d["target"] = (d["level_status"] != "completed").astype(int)
 
     # features available at or early in a level attempt
     num_cols = ["level_seq", "hints_used", "time_to_first_word_sec",

@@ -10,7 +10,7 @@ Models:   Logistic Regression, Decision Tree, Random Forest, XGBoost/LightGBM
 
 usage: python3 models.py [FILE] [–from YYYY-MM-DD] [–tune] [–cost-fp FLOAT –cost-fn FLOAT]
 """
-from sklearn.calibration import CalibratedClassifierCV, CalibrationDisplay
+from sklearn.calibration import CalibrationDisplay
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import (
     make_scorer,
@@ -19,12 +19,12 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import (
     StratifiedKFold, KFold, cross_validate,
-    RandomizedSearchCV, TimeSeriesSplit, learning_curve,
+    RandomizedSearchCV, learning_curve,
 )
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
-from sklearn.linear_model import LinearRegression, LogisticRegression, Ridge, ElasticNet
+from sklearn.linear_model import LogisticRegression, Ridge, ElasticNet
 from scipy.stats import wilcoxon
 import matplotlib.pyplot as plt
 import warnings
@@ -103,7 +103,8 @@ log = logging.getLogger(__name__)
 
 RANDOM_STATE = 42
 N_SPLITS = 5
-OUTPUT_DIR = Path("reports")
+INPUT_DIR = Path("reports")
+OUTPUT_DIR = Path("reports/models")
 MODEL_DIR = OUTPUT_DIR / "saved_models"
 RARE_CAT_THRESHOLD = 5
 LOG_COLS = {"visit_count", "session_duration_first", "avg_time_first_word"}
@@ -144,8 +145,8 @@ def hour_to_period(hour: float) -> str:
 
 
 def find_latest_tsvs() -> list:
-    ru_tsvs = sorted(OUTPUT_DIR.glob("metrica-sessions-[0-9]*.tsv"))
-    eng_tsvs = sorted(OUTPUT_DIR.glob("metrica-sessions-eng-*.tsv"))
+    ru_tsvs = sorted(INPUT_DIR.glob("metrica-sessions-[0-9]*.tsv"))
+    eng_tsvs = sorted(INPUT_DIR.glob("metrica-sessions-eng-*.tsv"))
     paths = []
     if ru_tsvs:
         paths.append(ru_tsvs[-1])
