@@ -25,6 +25,9 @@ PARAMS = {
         "ym:s:operatingSystem",     # iOS, Android, Windows, etc.
         "ym:s:UTMSource",           # UTM source (e.g. google, vk, direct)
         "ym:s:UTMMedium",           # UTM medium (e.g. cpc, organic, referral)
+        "ym:s:lastTrafficSource",   # Metrica attribution: organic/direct/referral/ad
+        "ym:s:lastSearchEngine",    # search engine name (organic traffic)
+        "ym:s:lastAdvEngine",       # ad network name (paid traffic)
         "ym:s:regionCity",          # city of the visitor
         "ym:s:parsedParamsKey1",    # game event param keys
         "ym:s:parsedParamsKey2",    # game event param values
@@ -49,7 +52,9 @@ SESSION_FIELDS = {"ab_group", "is_returning",
 UNROLLED_COLUMNS = [
     "session_id", "date", "client_id",
     "is_new_user", "visit_duration_sec", "page_views",
-    "device_category", "browser", "os", "utm_source", "utm_medium", "region",
+    "device_category", "browser", "os",
+    "utm_source", "utm_medium", "traffic_source", "search_engine", "adv_engine",
+    "region",
     "ab_group", "is_returning", "visit_count", "hour_of_day",
     "level", "theme_letter", "level_status", "level_seq",
     "words_found", "words_total", "completion_pct",
@@ -82,6 +87,9 @@ def unroll_session(row):
         "os":               row.get("ym:s:operatingSystem", ""),
         "utm_source":       row.get("ym:s:UTMSource", ""),
         "utm_medium":       row.get("ym:s:UTMMedium", ""),
+        "traffic_source":   row.get("ym:s:lastTrafficSource", ""),
+        "search_engine":    row.get("ym:s:lastSearchEngine", ""),
+        "adv_engine":       row.get("ym:s:lastAdvEngine", ""),
         "region":           row.get("ym:s:regionCity", ""),
     }
 
